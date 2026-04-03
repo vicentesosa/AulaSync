@@ -737,6 +737,30 @@ html, body {
   </div>
 </div>
 
+<!-- Modal: renombrar conversación -->
+<div class="modal-mask" id="renameConvModal">
+  <div class="modal-box">
+    <h4><i class="fas fa-pen"></i> Cambiar nombre</h4>
+    <input class="modal-inp" id="renameConvInput" type="text" placeholder="Nuevo nombre..."/>
+    <div class="modal-footer">
+      <button class="modal-btn modal-btn-cancel" id="renameCancelBtn">Cancelar</button>
+      <button class="modal-btn modal-btn-confirm" id="renameConfirmBtn"><i class="fas fa-check"></i> Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: confirmar eliminar conversación -->
+<div class="modal-mask" id="deleteConvModal">
+  <div class="modal-box">
+    <h4><i class="fas fa-trash" style="color:#e05555"></i> Eliminar conversación</h4>
+    <p style="color:var(--muted);font-size:.85rem;margin:.2rem 0 1rem">¿Seguro que querés eliminar esta conversación? Esta acción no se puede deshacer.</p>
+    <div class="modal-footer">
+      <button class="modal-btn modal-btn-cancel" id="deleteCancelBtn">Cancelar</button>
+      <button class="modal-btn" id="deleteConfirmBtn" style="background:#e05555;color:#fff"><i class="fas fa-trash"></i> Eliminar</button>
+    </div>
+  </div>
+</div>
+
 <!-- Menú contextual de conversaciones -->
 <div id="convContextMenu">
   <button class="ctx-item" id="ctxRename"><i class="fas fa-pen"></i> Cambiar nombre</button>
@@ -1128,22 +1152,41 @@ function closeCtxMenu() { ctxMenu.classList.remove('open'); }
 document.addEventListener('click', closeCtxMenu);
 document.addEventListener('contextmenu', e => { if (!e.target.closest('.ai-conv-btn')) closeCtxMenu(); });
 
+// Modal renombrar
+const renameConvModal  = document.getElementById('renameConvModal');
+const renameConvInput  = document.getElementById('renameConvInput');
 document.getElementById('ctxRename').addEventListener('click', () => {
   const conv = conversations.find(c => c.id === ctxConvId);
   if (!conv) return;
-  const nombre = prompt('Nuevo nombre:', conv.name);
-  if (nombre && nombre.trim()) {
-    conv.name = nombre.trim();
+  renameConvInput.value = conv.name;
+  renameConvModal.classList.add('open');
+  setTimeout(() => renameConvInput.focus(), 80);
+});
+document.getElementById('renameCancelBtn').addEventListener('click', () => renameConvModal.classList.remove('open'));
+document.getElementById('renameConfirmBtn').addEventListener('click', () => {
+  const conv = conversations.find(c => c.id === ctxConvId);
+  const nombre = renameConvInput.value.trim();
+  if (conv && nombre) {
+    conv.name = nombre;
     saveConversations();
-    if (ctxConvId === currentConvId) aiConvNameBar.textContent = conv.name;
+    if (ctxConvId === currentConvId) aiConvNameBar.textContent = nombre;
     renderConvList();
   }
+  renameConvModal.classList.remove('open');
+});
+renameConvInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('renameConfirmBtn').click();
+  if (e.key === 'Escape') renameConvModal.classList.remove('open');
 });
 
-document.getElementById('ctxDelete').addEventListener('click', () => {
-  if (!confirm('¿Eliminar esta conversación?')) return;
+// Modal eliminar
+const deleteConvModal = document.getElementById('deleteConvModal');
+document.getElementById('ctxDelete').addEventListener('click', () => deleteConvModal.classList.add('open'));
+document.getElementById('deleteCancelBtn').addEventListener('click', () => deleteConvModal.classList.remove('open'));
+document.getElementById('deleteConfirmBtn').addEventListener('click', () => {
   conversations = conversations.filter(c => c.id !== ctxConvId);
   saveConversations();
+  deleteConvModal.classList.remove('open');
   if (ctxConvId === currentConvId) {
     if (conversations.length > 0) loadConv(conversations[conversations.length - 1].id);
     else newConversation();
