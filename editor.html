@@ -325,6 +325,26 @@ html, body {
 .ai-ham-item:hover { background: var(--card2); }
 .ai-ham-item i { color: var(--accent); width: 14px; flex-shrink: 0; }
 .ai-ham-divider { height: 1px; background: var(--border); margin: .35rem 0; }
+/* Menú contextual de conversaciones */
+#convContextMenu {
+  position: fixed; z-index: 9999;
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 9px; padding: .3rem;
+  box-shadow: 0 8px 32px rgba(0,0,0,.55);
+  display: none; min-width: 170px;
+}
+#convContextMenu.open { display: block; }
+.ctx-item {
+  display: flex; align-items: center; gap: .5rem;
+  width: 100%; background: transparent; border: none;
+  color: var(--text); font-size: .82rem;
+  padding: .5rem .7rem; border-radius: 7px;
+  cursor: pointer; text-align: left; transition: background .15s;
+}
+.ctx-item:hover { background: var(--card2); }
+.ctx-item.ctx-delete { color: #e05555; }
+.ctx-item.ctx-delete:hover { background: rgba(224,85,85,.12); }
+.ctx-item i { width: 14px; flex-shrink: 0; }
 .ai-conv-btn {
   display: flex; align-items: center; gap: .45rem;
   width: 100%; background: transparent; border: none;
@@ -1094,6 +1114,38 @@ function currentConv() {
   return conversations.find(c => c.id === currentConvId) || null;
 }
 
+const ctxMenu    = document.getElementById('convContextMenu');
+let   ctxConvId  = null;
+
+function closeCtxMenu() { ctxMenu.classList.remove('open'); }
+
+document.addEventListener('click', closeCtxMenu);
+document.addEventListener('contextmenu', e => { if (!e.target.closest('.ai-conv-btn')) closeCtxMenu(); });
+
+document.getElementById('ctxRename').addEventListener('click', () => {
+  const conv = conversations.find(c => c.id === ctxConvId);
+  if (!conv) return;
+  const nombre = prompt('Nuevo nombre:', conv.name);
+  if (nombre && nombre.trim()) {
+    conv.name = nombre.trim();
+    saveConversations();
+    if (ctxConvId === currentConvId) aiConvNameBar.textContent = conv.name;
+    renderConvList();
+  }
+});
+
+document.getElementById('ctxDelete').addEventListener('click', () => {
+  if (!confirm('¿Eliminar esta conversación?')) return;
+  conversations = conversations.filter(c => c.id !== ctxConvId);
+  saveConversations();
+  if (ctxConvId === currentConvId) {
+    if (conversations.length > 0) loadConv(conversations[conversations.length - 1].id);
+    else newConversation();
+  } else {
+    renderConvList();
+  }
+});
+
 function renderConvList() {
   aiConvList.innerHTML = '';
   [...conversations].reverse().forEach(conv => {
@@ -1101,6 +1153,14 @@ function renderConvList() {
     btn.className = 'ai-conv-btn' + (conv.id === currentConvId ? ' active' : '');
     btn.innerHTML = `<i class="fas fa-comment-dots"></i><span>${conv.name}</span>`;
     btn.addEventListener('click', () => { loadConv(conv.id); aiHamMenu.classList.remove('open'); });
+    btn.addEventListener('contextmenu', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      ctxConvId = conv.id;
+      ctxMenu.style.left = e.clientX + 'px';
+      ctxMenu.style.top  = e.clientY + 'px';
+      ctxMenu.classList.add('open');
+    });
     aiConvList.appendChild(btn);
   });
 }
@@ -1393,5 +1453,11 @@ INSTRUCCIONES:
 updateWordCount();
 updateState();
 </script>
+
+<!-- Menú contextual de conversaciones -->
+<div id="convContextMenu">
+  <button class="ctx-item" id="ctxRename"><i class="fas fa-pen"></i> Cambiar nombre</button>
+  <button class="ctx-item ctx-delete" id="ctxDelete"><i class="fas fa-trash"></i> Eliminar conversación</button>
+</div>
 </body>
 </html>
