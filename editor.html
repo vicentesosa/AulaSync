@@ -252,7 +252,7 @@ html, body {
   line-height:1.65;
   color:#1a1a1a;
   word-break:break-word;
-  background:transparent;
+  background:#fff;
 }
 #editorContent:empty::before {
   content:attr(data-placeholder);
@@ -735,6 +735,10 @@ if (saved) {
   document.title   = (saved.title || 'Apunte') + ' — Portal Estudiantil';
 }
 
+// ── Paginación — constantes (deben estar antes del primer uso) ────────
+const PAGE_H  = 1123;
+const GAP_H   = 32;
+
 // Enable CSS styling mode
 document.execCommand('styleWithCSS', false, true);
 editor.focus();
@@ -760,11 +764,6 @@ function scheduleSave() {
 }
 
 // ── Paginación automática ─────────────────────────────────────────────
-const PAGE_H  = 1123; // altura A4 en px
-const GAP_H   = 32;   // espacio oscuro entre páginas
-const PAD_TOP = 72;
-const PAD_BOT = 80;
-
 function updatePageLines() {
   const wrapper    = document.getElementById('docWrapper');
   const bg         = document.getElementById('pagesBg');
@@ -1156,23 +1155,6 @@ function addAiBubble(text, role, scroll = true) {
   const div = document.createElement('div');
   div.className = 'ai-bubble ' + (role === 'user' ? 'ai-bubble-user' : 'ai-bubble-bot');
   div.textContent = text;
-
-  if (role === 'bot') {
-    const wrapper = document.createElement('div');
-    wrapper.className = 'ai-bubble-wrapper';
-    wrapper.appendChild(div);
-
-    const btn = document.createElement('button');
-    btn.className = 'ai-paste-btn';
-    btn.textContent = '📋 Pegar en apunte';
-    btn.addEventListener('click', () => pasteToEditor(text));
-    wrapper.appendChild(btn);
-
-    aiChatHistory.appendChild(wrapper);
-    if (scroll) aiChatHistory.scrollTop = aiChatHistory.scrollHeight;
-    return div;
-  }
-
   aiChatHistory.appendChild(div);
   if (scroll) aiChatHistory.scrollTop = aiChatHistory.scrollHeight;
   return div;
@@ -1354,16 +1336,17 @@ INSTRUCCIONES:
     thinkingBubble.classList.remove('thinking');
     thinkingBubble.textContent = reply;
 
-    // Agregar botón "Pegar en apunte" al bubble existente
+    // Envolver con botón "Pegar en apunte"
+    const wrapper = document.createElement('div');
+    wrapper.className = 'ai-bubble-wrapper';
+    thinkingBubble.replaceWith(wrapper);
+    wrapper.appendChild(thinkingBubble);
     const pasteBtn = document.createElement('button');
     pasteBtn.className = 'ai-paste-btn';
     pasteBtn.textContent = '📋 Pegar en apunte';
     pasteBtn.addEventListener('click', () => pasteToEditor(reply));
-    const wrapper = document.createElement('div');
-    wrapper.className = 'ai-bubble-wrapper';
-    thinkingBubble.parentNode.insertBefore(wrapper, thinkingBubble);
-    wrapper.appendChild(thinkingBubble);
     wrapper.appendChild(pasteBtn);
+    aiChatHistory.scrollTop = aiChatHistory.scrollHeight;
 
     if (autoPaste) pasteToEditor(reply);
 
