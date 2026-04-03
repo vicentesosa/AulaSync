@@ -590,6 +590,9 @@
       if (e.key === 'Enter') enviarPregunta();
       if (e.key === 'Escape') heroWrap.classList.remove('open');
     });
+    document.addEventListener('click', e => {
+      if (!heroWrap.contains(e.target)) heroWrap.classList.remove('open');
+    });
   </script>
 </body>
 </html>
