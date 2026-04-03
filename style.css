@@ -180,7 +180,7 @@ body {
   justify-content: center;
   gap: .55rem;
   padding: .65rem 2rem;
-  min-width: 340px;
+  min-width: 480px;
   background: rgba(108,99,255,.18);
   border: 1.5px solid rgba(108,99,255,.45);
   border-radius: 999px;
