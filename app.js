@@ -349,6 +349,80 @@ function construirApuntes() {
 
     container.appendChild(row);
   });
+
+  // Restaurar items desde localStorage
+  try {
+    const guardados = JSON.parse(localStorage.getItem('portal_apuntes') || '{}');
+    document.querySelectorAll('.apunte-row').forEach(row => {
+      const items = guardados[row.dataset.materia];
+      if (items && items.length) restaurarApuntesEnRow(row, items);
+    });
+  } catch {}
+}
+
+// ── Helpers de items ─────────────────────────────────────────────────
+const CAT_ORDER  = ['nota', 'gdoc', 'url'];
+const CAT_LABELS = { nota: 'Apuntes propios', gdoc: 'Google Docs', url: 'Links' };
+const CAT_ICONS  = { nota: 'fas fa-align-left', gdoc: 'fab fa-google-drive', url: 'fas fa-link' };
+
+function crearItemEl(data) {
+  const itemEl = document.createElement('div');
+  if (data.tipo === 'nota') {
+    itemEl.className      = 'apunte-item apunte-item-nota';
+    itemEl.dataset.noteId = data.noteId || '';
+    itemEl.innerHTML      = `<i class="fas fa-align-left"></i><a href="editor.html?id=${data.noteId}" target="_blank" rel="noopener" class="apunte-nota-link">${escHtml(data.nombre)}</a>`;
+  } else {
+    const icon = data.tipo === 'gdoc' ? 'fab fa-google-drive' : 'fas fa-link';
+    itemEl.className = `apunte-item apunte-item-${data.tipo}`;
+    itemEl.innerHTML = `<i class="${icon}"></i><a href="${escHtml(data.url)}" target="_blank" rel="noopener noreferrer">${escHtml(data.nombre)}</a>`;
+  }
+  itemEl.addEventListener('contextmenu', e => openCtxApunte(e, itemEl));
+  return itemEl;
+}
+
+function reordenarItems(row) {
+  const list = row.querySelector('.apunte-items-list');
+  // Recolectar items existentes
+  const items = [];
+  list.querySelectorAll('.apunte-item').forEach(item => {
+    items.push({
+      tipo: item.classList.contains('apunte-item-nota') ? 'nota'
+          : item.classList.contains('apunte-item-gdoc') ? 'gdoc' : 'url',
+      el: item
+    });
+  });
+  // Redibujar con etiquetas de categoría
+  list.innerHTML = '';
+  CAT_ORDER.forEach(tipo => {
+    const grupo = items.filter(i => i.tipo === tipo);
+    if (!grupo.length) return;
+    const lbl = document.createElement('div');
+    lbl.className = 'apunte-cat-label';
+    lbl.innerHTML = `<i class="${CAT_ICONS[tipo]}"></i> ${CAT_LABELS[tipo]}`;
+    list.appendChild(lbl);
+    grupo.forEach(i => list.appendChild(i.el));
+  });
+  const count = list.querySelectorAll('.apunte-item').length;
+  row.querySelector('.apunte-row-badge').textContent = `${count} apunte${count !== 1 ? 's' : ''}`;
+}
+
+function restaurarApuntesEnRow(row, items) {
+  if (!items || !items.length) return;
+  const list     = row.querySelector('.apunte-items-list');
+  const emptyMsg = row.querySelector('.apunte-body-empty');
+  list.innerHTML = '';
+  CAT_ORDER.forEach(tipo => {
+    const grupo = items.filter(i => i.tipo === tipo);
+    if (!grupo.length) return;
+    const lbl = document.createElement('div');
+    lbl.className = 'apunte-cat-label';
+    lbl.innerHTML = `<i class="${CAT_ICONS[tipo]}"></i> ${CAT_LABELS[tipo]}`;
+    list.appendChild(lbl);
+    grupo.forEach(data => list.appendChild(crearItemEl(data)));
+  });
+  if (emptyMsg) emptyMsg.style.display = 'none';
+  const count = list.querySelectorAll('.apunte-item').length;
+  row.querySelector('.apunte-row-badge').textContent = `${count} apunte${count !== 1 ? 's' : ''}`;
 }
 
 // Cerrar dropdown al hacer click fuera
@@ -363,10 +437,10 @@ document.querySelectorAll('.apunte-dropdown-item').forEach(btn => {
     apunteTipo = btn.dataset.tipo;
     apunteDropdown.classList.remove('open');
 
-    // Documento de Google → abre docs.new en la cuenta activa del navegador
+    // Documento de Google → abre docs.new y luego muestra el modal para pegar el link
     if (apunteTipo === 'gdoc') {
       window.open('https://docs.new', '_blank', 'noopener,noreferrer');
-      return;
+      // Sigue al modal para que el usuario pegue el link del doc creado
     }
 
     // Mi propio apunte → abre editor.html en nueva pestaña
@@ -374,17 +448,11 @@ document.querySelectorAll('.apunte-dropdown-item').forEach(btn => {
       const noteId = 'note_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
       window.open('editor.html?id=' + noteId, '_blank', 'noopener');
       if (apunteTargetRow) {
-        const list     = apunteTargetRow.querySelector('.apunte-items-list');
-        const emptyMsg = apunteTargetRow.querySelector('.apunte-body-empty');
-        const itemEl   = document.createElement('div');
-        itemEl.className       = 'apunte-item apunte-item-nota';
-        itemEl.dataset.noteId  = noteId;
-        itemEl.innerHTML = `<i class="fas fa-align-left"></i><a href="editor.html?id=${noteId}" target="_blank" rel="noopener" class="apunte-nota-link">Apunte sin título</a>`;
-        itemEl.addEventListener('contextmenu', e => openCtxApunte(e, itemEl));
+        const list   = apunteTargetRow.querySelector('.apunte-items-list');
+        const itemEl = crearItemEl({ tipo: 'nota', noteId, nombre: 'Apunte sin título' });
         list.appendChild(itemEl);
-        if (emptyMsg) emptyMsg.style.display = 'none';
-        const count = list.querySelectorAll('.apunte-item').length;
-        apunteTargetRow.querySelector('.apunte-row-badge').textContent = `${count} apunte${count > 1 ? 's' : ''}`;
+        reordenarItems(apunteTargetRow);
+        apunteTargetRow.querySelector('.apunte-body-empty').style.display = 'none';
         apunteTargetRow.classList.add('open');
         guardarPortalData();
       }
@@ -426,24 +494,17 @@ document.getElementById('apunteTexto').addEventListener('keydown', e => {
 
 function guardarApunte() {
   if (!apunteTargetRow) return;
-  const list     = apunteTargetRow.querySelector('.apunte-items-list');
-  const emptyMsg = apunteTargetRow.querySelector('.apunte-body-empty');
+  const list = apunteTargetRow.querySelector('.apunte-items-list');
 
   const raw    = document.getElementById('apunteUrlInput').value.trim();
   const nombre = document.getElementById('apunteNombreInput').value.trim();
   const url    = safeUrl(raw);
   if (!url) { document.getElementById('apunteUrlInput').focus(); return; }
-  const icon = apunteTipo === 'gdoc' ? 'fab fa-google-drive' : 'fas fa-link';
-  const itemEl = document.createElement('div');
-  itemEl.className = `apunte-item apunte-item-${apunteTipo}`;
-  itemEl.innerHTML = `<i class="${icon}"></i><a href="${escHtml(url)}" target="_blank" rel="noopener noreferrer">${escHtml(nombre || raw)}</a>`;
-  itemEl.addEventListener('contextmenu', e => openCtxApunte(e, itemEl));
 
+  const itemEl = crearItemEl({ tipo: apunteTipo, url, nombre: nombre || raw });
   list.appendChild(itemEl);
-  if (emptyMsg) emptyMsg.style.display = 'none';
-
-  const count = list.querySelectorAll('.apunte-item').length;
-  apunteTargetRow.querySelector('.apunte-row-badge').textContent = `${count} apunte${count > 1 ? 's' : ''}`;
+  reordenarItems(apunteTargetRow);
+  apunteTargetRow.querySelector('.apunte-body-empty').style.display = 'none';
   apunteTargetRow.classList.add('open');
 
   closeModalApunte();

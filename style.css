@@ -1082,6 +1082,18 @@ body {
   flex-direction: column;
   gap: .5rem;
 }
+.apunte-cat-label {
+  font-size: .7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: var(--muted);
+  padding: .5rem .2rem .1rem;
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+}
+.apunte-cat-label:first-child { padding-top: .1rem; }
 .apunte-item {
   display: flex;
   align-items: flex-start;
