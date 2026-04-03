@@ -644,18 +644,8 @@ html, body {
         </div>
       </div>
 
-      <!-- Key setup -->
-      <div class="ai-key-section" id="aiKeySection">
-        <p>Usá <strong style="color:var(--text)">Groq</strong> (gratuito, sin tarjeta).<br>
-           Obtené tu key en <strong style="color:var(--accent)">console.groq.com</strong> → API Keys → Create API Key.</p>
-        <div class="ai-key-row">
-          <input id="aiKeyInput" type="password" placeholder="Pegá tu API key de Groq…"/>
-          <button class="ai-send-btn" id="aiKeySave">Guardar</button>
-        </div>
-      </div>
-
       <!-- Chat -->
-      <div class="ai-chat-section" id="aiChatSection" style="display:none">
+      <div class="ai-chat-section" id="aiChatSection">
         <div class="ai-conv-name-bar" id="aiConvNameBar">Nueva conversación</div>
         <div class="ai-chat-history" id="aiChatHistory"></div>
         <div class="ai-input-area">
@@ -663,7 +653,6 @@ html, body {
             <textarea id="aiInput" rows="1" placeholder="Escribí tu pregunta…"></textarea>
             <button class="ai-send-btn" id="aiSendBtn"><i class="fas fa-paper-plane"></i></button>
           </div>
-          <button class="ai-key-change-btn" id="aiKeyChange">Cambiar API key</button>
         </div>
       </div>
 
@@ -978,9 +967,7 @@ document.addEventListener('keydown', e => {
 // ══════════════════════════════════════════════════════════════════════
 //  PANEL IA  (Groq — gratuito)
 // ══════════════════════════════════════════════════════════════════════
-const aiKeySection  = document.getElementById('aiKeySection');
 const aiChatSection = document.getElementById('aiChatSection');
-const aiKeyInput    = document.getElementById('aiKeyInput');
 const aiInput       = document.getElementById('aiInput');
 const aiSendBtn     = document.getElementById('aiSendBtn');
 const aiChatHistory = document.getElementById('aiChatHistory');
@@ -988,38 +975,8 @@ const aiConvNameBar = document.getElementById('aiConvNameBar');
 const aiConvList    = document.getElementById('aiConvList');
 const aiHamMenu     = document.getElementById('aiHamMenu');
 
-// ── Key ──────────────────────────────────────────────────────────────
-let groqKey = localStorage.getItem('groq_api_key') || '';
-
-function aiShowChat() {
-  aiKeySection.style.display  = 'none';
-  aiChatSection.style.display = 'flex';
-  setTimeout(() => aiInput.focus(), 80);
-}
-function aiShowKey() {
-  aiKeySection.style.display  = '';
-  aiChatSection.style.display = 'none';
-  setTimeout(() => aiKeyInput.focus(), 80);
-}
-
-if (groqKey) aiShowChat(); else aiShowKey();
-
-document.getElementById('aiKeySave').addEventListener('click', () => {
-  const k = aiKeyInput.value.trim();
-  if (!k) { aiKeyInput.focus(); return; }
-  groqKey = k;
-  localStorage.setItem('groq_api_key', k);
-  aiKeyInput.value = '';
-  aiShowChat();
-});
-aiKeyInput.addEventListener('keydown', e => {
-  if (e.key === 'Enter') document.getElementById('aiKeySave').click();
-});
-document.getElementById('aiKeyChange').addEventListener('click', () => {
-  groqKey = '';
-  localStorage.removeItem('groq_api_key');
-  aiShowKey();
-});
+// ── Proxy Worker ─────────────────────────────────────────────────────
+const WORKER_URL = 'https://groq-proxy.vicente200950.workers.dev/';
 
 // ── Conversaciones ───────────────────────────────────────────────────
 const CONV_KEY = 'ai_conversations';
@@ -1091,12 +1048,12 @@ document.getElementById('aiNewConvBtn').addEventListener('click', () => {
 
 // ── Auto-nombre de conversación ──────────────────────────────────────
 async function autoNameConv(conv) {
-  if (!groqKey || conv.name !== 'Nueva conversación' || conv.messages.length < 2) return;
+  if (conv.name !== 'Nueva conversación' || conv.messages.length < 2) return;
   try {
     const excerpt = conv.messages.slice(0, 3).map(m => `${m.role}: ${m.content}`).join('\n');
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    const res = await fetch(WORKER_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + groqKey },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'llama-3.3-70b-versatile',
         messages: [
@@ -1226,7 +1183,7 @@ function getPortalContext() {
 
 async function sendAiMessage() {
   const text = aiInput.value.trim();
-  if (!text || !groqKey) return;
+  if (!text) return;
   if (!currentConvId) newConversation();
 
   aiInput.value = '';
@@ -1275,9 +1232,9 @@ INSTRUCCIONES:
   const history = conv.messages.slice(-11, -1).map(m => ({ role: m.role, content: m.content }));
 
   try {
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    const res = await fetch(WORKER_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + groqKey },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model,
         messages: [
