@@ -84,7 +84,8 @@ let calYear = 2026, calMonth = 3; // Abril 2026
 
 // Array central de eventos del calendario
 const eventsData   = []; // tareas: { nombre, materia, vence, url, completada }
-const examenesData = []; // exámenes: { materia, tema, vence, url }
+const examenesData  = []; // exámenes: { materia, tema, vence, url }
+const proyectosData = []; // proyectos: { materia, tema, vence, links }
 
 // Devuelve el color CSS de la materia desde la grilla (o rojo por defecto)
 function getMateriaColor(nombreMateria) {
@@ -136,10 +137,12 @@ function buildCalendar(year, month) {
     el.textContent = d;
     if (d === todayDay) el.classList.add('today');
     if (isThisMonth && d < todayDay) el.classList.add('past');
-    // Marcar días con eventos o exámenes
+    // Marcar días con eventos, exámenes o proyectos
     const tieneEvento = eventsData.some(e =>
       e.vence.getDate() === d && e.vence.getMonth() === month && e.vence.getFullYear() === year
     ) || examenesData.some(e =>
+      e.vence.getDate() === d && e.vence.getMonth() === month && e.vence.getFullYear() === year
+    ) || proyectosData.some(e =>
       e.vence.getDate() === d && e.vence.getMonth() === month && e.vence.getFullYear() === year
     );
     if (tieneEvento) el.classList.add('has-event');
@@ -167,13 +170,17 @@ function actualizarEventosList() {
 
   const tareas = eventsData
     .filter(e => !e.completada && e.vence >= hoy)
-    .map(e => ({ ...e, _tipo: 'tarea' }));
+    .map(e => ({ _entry: e, _tipo: 'tarea', vence: e.vence, nombre: e.nombre, materia: e.materia, url: (e.urls||[])[0]||e.url||'', links: e.urls||[] }));
 
   const examenes = examenesData
     .filter(e => e.vence >= hoy)
-    .map(e => ({ ...e, _tipo: 'examen' }));
+    .map(e => ({ _entry: e, _tipo: 'examen', vence: e.vence, nombre: e.tema, materia: e.materia, links: e.links||[] }));
 
-  const todos = [...tareas, ...examenes].sort((a, b) => a.vence - b.vence);
+  const proyectos = proyectosData
+    .filter(e => e.vence >= hoy)
+    .map(e => ({ _entry: e, _tipo: 'proyecto', vence: e.vence, nombre: e.tema, materia: e.materia, links: e.links||[] }));
+
+  const todos = [...tareas, ...examenes, ...proyectos].sort((a, b) => a.vence - b.vence);
 
   if (todos.length === 0) {
     eventsList.innerHTML = `
@@ -189,6 +196,9 @@ function actualizarEventosList() {
     const monthName = MONTH_NAMES[item.vence.getMonth()].slice(0, 3);
     const ev = document.createElement('div');
     ev.className = 'ev';
+    ev._entry = item._entry;
+    ev._tipo  = item._tipo;
+
     if (item._tipo === 'tarea') {
       ev.innerHTML = `
         <div class="ev-date task-date">
@@ -196,11 +206,11 @@ function actualizarEventosList() {
           <span class="ev-month">${monthName}</span>
         </div>
         <div class="ev-info">
-          <h4>${taskLink(item.nombre, (item.urls||[])[0]||item.url||'')}</h4>
+          <h4>${taskLink(item.nombre, item.url||'')}</h4>
           <p><i class="fas fa-book"></i> ${escHtml(item.materia)}</p>
         </div>
         <span class="ev-pill task-pill">Tarea</span>`;
-    } else {
+    } else if (item._tipo === 'examen') {
       const primerLink = item.links && item.links[0];
       ev.innerHTML = `
         <div class="ev-date exam-date">
@@ -208,15 +218,212 @@ function actualizarEventosList() {
           <span class="ev-month">${monthName}</span>
         </div>
         <div class="ev-info">
-          <h4>${primerLink ? taskLink(item.tema, primerLink.url) : escHtml(item.tema)}</h4>
+          <h4>${primerLink ? taskLink(item.nombre, primerLink.url) : escHtml(item.nombre)}</h4>
           <p><i class="fas fa-book"></i> ${escHtml(item.materia)}</p>
         </div>
         <span class="ev-pill exam-pill">Examen</span>`;
+    } else {
+      const primerLink = item.links && item.links[0];
+      ev.innerHTML = `
+        <div class="ev-date proj-date">
+          <span class="ev-day">${day}</span>
+          <span class="ev-month">${monthName}</span>
+        </div>
+        <div class="ev-info">
+          <h4>${primerLink ? taskLink(item.nombre, primerLink.url) : escHtml(item.nombre)}</h4>
+          <p><i class="fas fa-book"></i> ${escHtml(item.materia)}</p>
+        </div>
+        <span class="ev-pill proj-pill">Proyecto</span>`;
     }
+
+    ev.addEventListener('contextmenu', e => openCtxCalEvento(e, ev));
     eventsList.appendChild(ev);
   });
 }
 
+
+// ===== CONTEXT MENU CALENDARIO =====
+const ctxCalEvento = document.getElementById('ctxCalEvento');
+let ctxCalTarget = null;
+
+function openCtxCalEvento(e, ev) {
+  e.preventDefault();
+  e.stopPropagation();
+  ctxCalTarget = ev;
+  const tipo = ev._tipo;
+  const labels = { tarea: 'tarea', examen: 'examen', proyecto: 'proyecto' };
+  document.getElementById('ctxCalIr').querySelector('span').textContent = 'Ir al ' + (labels[tipo] || 'evento');
+  const btnComp = document.getElementById('ctxCalCompletar');
+  btnComp.style.display = '';
+  const x = Math.min(e.clientX, window.innerWidth  - 240);
+  const y = Math.min(e.clientY, window.innerHeight - 160);
+  ctxCalEvento.style.left = x + 'px';
+  ctxCalEvento.style.top  = y + 'px';
+  ctxCalEvento.classList.add('open');
+}
+function closeCtxCalEvento() { ctxCalEvento.classList.remove('open'); }
+document.addEventListener('click',       closeCtxCalEvento);
+document.addEventListener('contextmenu', e => { if (!e.target.closest('.ev')) closeCtxCalEvento(); });
+document.addEventListener('keydown',     e => { if (e.key === 'Escape') closeCtxCalEvento(); });
+
+document.getElementById('ctxCalCompletar').addEventListener('click', () => {
+  if (!ctxCalTarget) return;
+  const entry = ctxCalTarget._entry;
+  const tipo  = ctxCalTarget._tipo;
+  closeCtxCalEvento(); ctxCalTarget = null;
+
+  if (tipo === 'tarea') {
+    const li = document.getElementById('tarea-' + entry.id);
+    if (li && !li.classList.contains('done-task')) {
+      const cb = li.querySelector('input[type=checkbox]');
+      if (cb) { cb.checked = true; cb.dispatchEvent(new Event('change')); }
+    }
+  } else if (tipo === 'examen') {
+    const idx = examenesData.indexOf(entry);
+    if (idx > -1) examenesData.splice(idx, 1);
+    examenesCompletados.push(entry);
+    const card = [...examenesGrid.querySelectorAll('.examen-card')].find(c => c._entry === entry);
+    if (card) card.remove();
+    if (!examenesGrid.querySelector('.examen-card')) {
+      const msg = document.createElement('div');
+      msg.className = 'empty-state'; msg.id = 'examenesEmpty';
+      msg.innerHTML = '<i class="fas fa-file-alt"></i><p>No hay exámenes registrados</p>';
+      examenesGrid.appendChild(msg);
+    }
+    actualizarStats();
+  } else if (tipo === 'proyecto') {
+    const idx = proyectosData.indexOf(entry);
+    if (idx > -1) proyectosData.splice(idx, 1);
+    proyectosCompletados.push(entry);
+    const card = [...proyectosGrid.querySelectorAll('.proyecto-card')].find(c => c._entry === entry);
+    if (card) card.remove();
+    if (!proyectosGrid.querySelector('.proyecto-card')) {
+      const msg = document.createElement('div');
+      msg.className = 'empty-state'; msg.id = 'proyectosEmpty';
+      msg.innerHTML = '<i class="fas fa-project-diagram"></i><p>No hay proyectos registrados</p>';
+      proyectosGrid.appendChild(msg);
+    }
+    actualizarStats();
+  }
+  actualizarEventosList(); actualizarActividadesSemana();
+  buildCalendar(calYear, calMonth); guardarPortalData();
+});
+
+document.getElementById('ctxCalEliminar').addEventListener('click', () => {
+  if (!ctxCalTarget) return;
+  const entry = ctxCalTarget._entry;
+  const tipo  = ctxCalTarget._tipo;
+  closeCtxCalEvento(); ctxCalTarget = null;
+
+  if (tipo === 'tarea') {
+    const li = document.getElementById('tarea-' + entry.id);
+    const idx = eventsData.indexOf(entry);
+    if (idx !== -1) eventsData.splice(idx, 1);
+    if (li) {
+      const wasDone = li.classList.contains('done-task');
+      li.remove();
+      if (wasDone) { doneCount = Math.max(0, doneCount - 1); doneCountEl.textContent = doneCount; refreshDoneList(); }
+    }
+    actualizarCounts();
+  } else if (tipo === 'examen') {
+    const idx = examenesData.indexOf(entry);
+    if (idx > -1) examenesData.splice(idx, 1);
+    const card = [...examenesGrid.querySelectorAll('.examen-card')].find(c => c._entry === entry);
+    if (card) card.remove();
+    if (!examenesGrid.querySelector('.examen-card')) {
+      const msg = document.createElement('div');
+      msg.className = 'empty-state'; msg.id = 'examenesEmpty';
+      msg.innerHTML = '<i class="fas fa-file-alt"></i><p>No hay exámenes registrados</p>';
+      examenesGrid.appendChild(msg);
+    }
+    actualizarStats();
+  } else if (tipo === 'proyecto') {
+    const idx = proyectosData.indexOf(entry);
+    if (idx > -1) proyectosData.splice(idx, 1);
+    const card = [...proyectosGrid.querySelectorAll('.proyecto-card')].find(c => c._entry === entry);
+    if (card) card.remove();
+    if (!proyectosGrid.querySelector('.proyecto-card')) {
+      const msg = document.createElement('div');
+      msg.className = 'empty-state'; msg.id = 'proyectosEmpty';
+      msg.innerHTML = '<i class="fas fa-project-diagram"></i><p>No hay proyectos registrados</p>';
+      proyectosGrid.appendChild(msg);
+    }
+    actualizarStats();
+  }
+  actualizarEventosList(); actualizarActividadesSemana();
+  buildCalendar(calYear, calMonth); guardarPortalData();
+});
+
+document.getElementById('ctxCalIr').addEventListener('click', () => {
+  if (!ctxCalTarget) return;
+  const entry = ctxCalTarget._entry;
+  const tipo  = ctxCalTarget._tipo;
+  closeCtxCalEvento(); ctxCalTarget = null;
+
+  if (tipo === 'tarea') {
+    showTab('tareas');
+    const li = document.getElementById('tarea-' + entry.id);
+    if (!li) return;
+    const lista    = li.parentElement;
+    const esUrgente = lista === colUrgentes;
+    const dot      = li.querySelector('.priority-dot');
+    const dotColor = dot
+      ? (dot.classList.contains('red') ? 'red' : dot.classList.contains('orange') ? 'orange' : 'yellow')
+      : 'yellow';
+    const hoy  = new Date(); hoy.setHours(0,0,0,0);
+    const diff = Math.round((entry.vence - hoy) / 86400000);
+    const venceTexto = diff === 0 ? 'Vence hoy'
+      : diff === 1 ? 'Vence mañana'
+      : diff <= 7  ? `Vence en ${diff} días`
+      : `Vence el ${entry.vence.toLocaleDateString('es-AR', { day:'numeric', month:'long' })}`;
+    abrirDetalleTarea(entry, li, lista, esUrgente, dotColor, venceTexto);
+
+  } else if (tipo === 'examen') {
+    showTab('examenes');
+    const card = [...examenesGrid.querySelectorAll('.examen-card')].find(c => c._entry === entry);
+    if (card) abrirDetalleExamen(card);
+
+  } else {
+    showTab('proyectos');
+    const card = [...proyectosGrid.querySelectorAll('.proyecto-card')].find(c => c._entry === entry);
+    if (card) abrirDetalleProyecto(card);
+  }
+});
+
+// ===== ACTUALIZAR CARDS DE MATERIAS =====
+function actualizarMatCards() {
+  document.querySelectorAll('.mat-card').forEach(card => {
+    const nombre     = card.querySelector('h3')?.textContent;
+    if (!nombre) return;
+    const total      = eventsData.filter(e => e.materia === nombre).length;
+    const completadas = eventsData.filter(e => e.materia === nombre && e.completada).length;
+    const pendientes  = total - completadas;
+
+    // Badge
+    const badge = card.querySelector('.mat-badge');
+    if (badge) {
+      if (pendientes === 0) {
+        badge.className = 'mat-badge ok';
+        badge.textContent = 'Al día';
+      } else if (pendientes === 1) {
+        badge.className = 'mat-badge pending';
+        badge.textContent = '1 tarea pendiente';
+      } else {
+        badge.className = 'mat-badge pending';
+        badge.textContent = `${pendientes} tareas pendientes`;
+      }
+    }
+
+    // Barra de progreso
+    const bar = card.querySelector('.mat-progress-bar');
+    const pct = total > 0 ? Math.round((completadas / total) * 100) : 0;
+    if (bar) { bar.style.width = pct + '%'; delete bar.dataset.animated; }
+
+    // Etiqueta "0/1"
+    const label = card.querySelector('.mat-progress-label span:last-child');
+    if (label) label.textContent = `${completadas}/${total}`;
+  });
+}
 
 // ===== STATS E INICIO =====
 function actualizarStats() {
@@ -294,7 +501,9 @@ function actualizarStats() {
     }
   }
 
-  const numProyectos = document.querySelectorAll('#page-proyectos .proy-card').length;
+  const numProyectos = proyectosData.filter(p => p.vence >= hoy).length;
+  const statProy = document.getElementById('statProyectos');
+  if (statProy) statProy.textContent = numProyectos;
   const badgeProyectos = document.getElementById('heroBadgeProyectos');
   if (badgeProyectos) {
     if (numProyectos > 0) {
@@ -305,6 +514,11 @@ function actualizarStats() {
       badgeProyectos.innerHTML = '<i class="fas fa-star"></i> Sin proyectos activos';
     }
   }
+
+  const qProy = document.getElementById('qnavProyectos');
+  if (qProy) qProy.textContent = numProyectos > 0
+    ? numProyectos + (numProyectos === 1 ? ' proyecto activo' : ' proyectos activos')
+    : 'Sin proyectos activos';
 }
 
 function actualizarActividadesSemana() {
@@ -1251,7 +1465,7 @@ document.getElementById('dtEliminar').addEventListener('click', () => {
     }
     actualizarCounts(); actualizarEventosList(); actualizarActividadesSemana();
     buildCalendar(calYear, calMonth); refrescarDetalleMateria?.();
-    guardarPortalData();
+    actualizarMatCards(); guardarPortalData();
   }, 100);
 });
 
@@ -1304,6 +1518,8 @@ function attachCheckboxHandler(li, lista, esUrgente, taskEntry) {
         doneCount++; doneCountEl.textContent = doneCount;
         taskEntry.completada = true;
         actualizarCounts(); refrescarDetalleMateria();
+        actualizarEventosList(); actualizarActividadesSemana();
+        buildCalendar(calYear, calMonth); actualizarMatCards(); guardarPortalData();
       }, 280);
     } else {
       li.classList.remove('done-task');
@@ -1321,6 +1537,8 @@ function attachCheckboxHandler(li, lista, esUrgente, taskEntry) {
         }
         taskEntry.completada = false;
         actualizarCounts(); refrescarDetalleMateria();
+        actualizarEventosList(); actualizarActividadesSemana();
+        buildCalendar(calYear, calMonth); actualizarMatCards(); guardarPortalData();
       }, 280);
     }
   });
@@ -1396,6 +1614,7 @@ function crearTarea() {
   actualizarActividadesSemana();
   buildCalendar(calYear, calMonth);
   actualizarCounts();
+  actualizarMatCards();
   closeModalTarea();
 }
 
@@ -1432,6 +1651,33 @@ function guardarPortalData() {
       links:   e.links || [],
     }));
     localStorage.setItem('portal_examenes', JSON.stringify(examsSerial));
+
+    // Exámenes completados
+    const examsCompSerial = examenesCompletados.map(e => ({
+      materia: e.materia,
+      tema:    e.tema,
+      vence:   e.vence instanceof Date ? e.vence.toISOString().split('T')[0] : e.vence,
+      links:   e.links || [],
+    }));
+    localStorage.setItem('portal_examenes_completados', JSON.stringify(examsCompSerial));
+
+    // Proyectos
+    const proyectosSerial = proyectosData.map(p => ({
+      materia: p.materia,
+      tema:    p.tema,
+      vence:   p.vence instanceof Date ? p.vence.toISOString().split('T')[0] : p.vence,
+      links:   p.links || [],
+    }));
+    localStorage.setItem('portal_proyectos', JSON.stringify(proyectosSerial));
+
+    // Proyectos completados
+    const proyCompSerial = proyectosCompletados.map(p => ({
+      materia: p.materia,
+      tema:    p.tema,
+      vence:   p.vence instanceof Date ? p.vence.toISOString().split('T')[0] : p.vence,
+      links:   p.links || [],
+    }));
+    localStorage.setItem('portal_proyectos_completados', JSON.stringify(proyCompSerial));
 
     // Apuntes — serializar el DOM de cada fila
     const apuntesSerial = {};
@@ -1609,6 +1855,112 @@ document.getElementById('ctxExamenDelete').addEventListener('click', () => {
   buildCalendar(calYear, calMonth); actualizarStats(); guardarPortalData();
 });
 
+// ── Marcar examen como completado ──
+const examenesCompletados = [];
+
+function marcarExamenCompletado() {
+  if (!ctxExamenTarget) return;
+  const entry = ctxExamenTarget._entry;
+  const idx   = examenesData.indexOf(entry);
+  if (idx > -1) examenesData.splice(idx, 1);
+  examenesCompletados.push(entry);
+  ctxExamenTarget.remove();
+  ctxExamenTarget = null;
+  closeCtxExamen();
+  if (!examenesGrid.querySelector('.examen-card')) {
+    const msg = document.createElement('div');
+    msg.className = 'empty-state'; msg.id = 'examenesEmpty';
+    msg.innerHTML = '<i class="fas fa-file-alt"></i><p>No hay exámenes registrados</p>';
+    examenesGrid.appendChild(msg);
+  }
+  actualizarEventosList(); actualizarActividadesSemana();
+  buildCalendar(calYear, calMonth); actualizarStats(); guardarPortalData();
+}
+
+document.getElementById('ctxExamenComplete').addEventListener('click', marcarExamenCompletado);
+
+// ── Modal Completados Examen ──
+const modalCompletadosExamen = document.getElementById('modalCompletadosExamen');
+
+function abrirCompletadosExamen() {
+  const body  = document.getElementById('completadosExamenBody');
+  const empty = document.getElementById('completadosExamenEmpty');
+  // Limpiar lista anterior
+  body.querySelectorAll('.completados-examen-list').forEach(el => el.remove());
+
+  if (!examenesCompletados.length) {
+    if (!empty) {
+      const e = document.createElement('div');
+      e.className = 'empty-state'; e.id = 'completadosExamenEmpty';
+      e.innerHTML = '<i class="fas fa-check-double"></i><p>Ningún examen marcado como completado</p>';
+      body.appendChild(e);
+    }
+    modalCompletadosExamen.classList.add('open');
+    return;
+  }
+
+  if (empty) empty.remove();
+
+  const list = document.createElement('div');
+  list.className = 'completados-examen-list';
+
+  examenesCompletados.forEach((entry, i) => {
+    const color = getMateriaColor(entry.materia);
+    const fechaTxt = entry.vence instanceof Date
+      ? entry.vence.toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' })
+      : entry.vence;
+
+    const item = document.createElement('div');
+    item.className = 'completado-examen-item';
+    item.style.setProperty('--ec', color);
+    item.innerHTML = `
+      <div class="completado-examen-icon"><i class="fas fa-check"></i></div>
+      <div class="completado-examen-info">
+        <div class="completado-examen-materia">${escHtml(entry.materia)}</div>
+        <div class="completado-examen-tema">${escHtml(entry.tema)}</div>
+        <div class="completado-examen-fecha"><i class="fas fa-calendar-alt" style="margin-right:.3rem"></i>${fechaTxt}</div>
+      </div>
+      <div class="completado-examen-acciones">
+        <button class="completado-examen-undo" title="Volver a exámenes" data-idx="${i}"><i class="fas fa-undo"></i> Deshacer</button>
+        <button class="completado-examen-del" title="Eliminar" data-idx="${i}"><i class="fas fa-trash"></i></button>
+      </div>`;
+    list.appendChild(item);
+  });
+
+  list.addEventListener('click', e => {
+    const btnUndo = e.target.closest('.completado-examen-undo');
+    if (btnUndo) {
+      const idx   = parseInt(btnUndo.dataset.idx, 10);
+      const entry = examenesCompletados.splice(idx, 1)[0];
+      examenesData.push(entry);
+      const emptyEl = document.getElementById('examenesEmpty');
+      if (emptyEl) emptyEl.remove();
+      examenesGrid.appendChild(buildExamenCard(entry));
+      actualizarEventosList(); actualizarActividadesSemana();
+      buildCalendar(calYear, calMonth); actualizarStats(); guardarPortalData();
+      abrirCompletadosExamen();
+      return;
+    }
+    const btnDel = e.target.closest('.completado-examen-del');
+    if (btnDel) {
+      const idx = parseInt(btnDel.dataset.idx, 10);
+      examenesCompletados.splice(idx, 1);
+      guardarPortalData();
+      abrirCompletadosExamen();
+    }
+  });
+
+  body.appendChild(list);
+  modalCompletadosExamen.classList.add('open');
+}
+
+function cerrarCompletadosExamen() { modalCompletadosExamen.classList.remove('open'); }
+
+document.getElementById('btnCompletadosExamen').addEventListener('click', abrirCompletadosExamen);
+document.getElementById('completadosExamenClose').addEventListener('click', cerrarCompletadosExamen);
+document.getElementById('completadosExamenCerrar').addEventListener('click', cerrarCompletadosExamen);
+modalCompletadosExamen.addEventListener('click', e => { if (e.target === modalCompletadosExamen) cerrarCompletadosExamen(); });
+
 // ── Renombrar examen ──
 const modalExamenRename = document.getElementById('modalExamenRename');
 const examenRenameInput = document.getElementById('examenRenameInput');
@@ -1735,6 +2087,378 @@ document.getElementById('detalleExamenCerrar').addEventListener('click', cerrarD
 modalDetalleExamen.addEventListener('click', e => { if (e.target === modalDetalleExamen) cerrarDetalleExamen(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') cerrarDetalleExamen(); });
 
+// ===== PROYECTOS =====
+const modalProyecto      = document.getElementById('modalProyecto');
+const proyectoMateria    = document.getElementById('proyectoMateria');
+const proyectoTema       = document.getElementById('proyectoTema');
+const proyectoFecha      = document.getElementById('proyectoFecha');
+const proyectoUrl        = document.getElementById('proyectoUrl');
+const proyectoNombreLink = document.getElementById('proyectoNombreLink');
+const proyectosGrid      = document.getElementById('proyectosGrid');
+
+// ── Modal nuevo proyecto ──
+function openModalProyecto() {
+  proyectoMateria.innerHTML = '<option value="" disabled selected>Seleccioná una materia...</option>';
+  document.querySelectorAll('#materiasGrid .mat-card h3').forEach(h3 => {
+    const opt = document.createElement('option');
+    opt.value = opt.textContent = h3.textContent;
+    proyectoMateria.appendChild(opt);
+  });
+  proyectoFecha.min        = new Date().toISOString().split('T')[0];
+  proyectoFecha.value      = '';
+  proyectoTema.value       = '';
+  proyectoUrl.value        = '';
+  proyectoNombreLink.value = '';
+  modalProyecto.classList.add('open');
+  setTimeout(() => proyectoMateria.focus(), 120);
+}
+function closeModalProyecto() { modalProyecto.classList.remove('open'); }
+
+document.getElementById('btnNuevoProyecto').addEventListener('click', openModalProyecto);
+document.getElementById('proyectoClose').addEventListener('click',   closeModalProyecto);
+document.getElementById('proyectoCancel').addEventListener('click',  closeModalProyecto);
+modalProyecto.addEventListener('click', e => { if (e.target === modalProyecto) closeModalProyecto(); });
+document.getElementById('proyectoConfirm').addEventListener('click', crearProyecto);
+proyectoTema.addEventListener('keydown', e => { if (e.key === 'Enter') crearProyecto(); });
+
+function buildProyectoCard(entry) {
+  const hoy     = new Date(); hoy.setHours(0, 0, 0, 0);
+  const diff    = Math.round((entry.vence - hoy) / 86400000);
+  const pillCls = diff <= 2 ? 'hoy' : diff <= 7 ? 'pronto' : 'lejos';
+  const pillTxt = diff === 0 ? 'Hoy' : diff === 1 ? 'Mañana'
+    : diff <= 7 ? `En ${diff} días`
+    : entry.vence.toLocaleDateString('es-AR', { day:'numeric', month:'long' });
+  const diasTxt = diff === 0 ? 'Hoy' : diff === 1 ? 'Mañana'
+    : diff < 0 ? 'Pasado' : `En ${diff} días`;
+
+  const card = document.createElement('div');
+  card.className = 'proyecto-card';
+  card.style.setProperty('--pc', getMateriaColor(entry.materia));
+  card.innerHTML = `
+    <div class="proyecto-top">
+      <span class="proyecto-materia-badge">${escHtml(entry.materia)}</span>
+      <span class="proyecto-urgencia-pill ${pillCls}">${pillTxt}</span>
+    </div>
+    <div class="proyecto-tema">${escHtml(entry.tema)}</div>
+    <div class="proyecto-footer">
+      <span class="proyecto-fecha"><i class="fas fa-calendar-alt"></i>
+        ${entry.vence.toLocaleDateString('es-AR', { weekday:'short', day:'numeric', month:'long' })}
+      </span>
+      <span class="proyecto-dias">${diasTxt}</span>
+    </div>`;
+
+  card._entry = entry;
+  actualizarLinksCountProyectoCard(card, entry);
+  card.addEventListener('click',       () => abrirDetalleProyecto(card));
+  card.addEventListener('contextmenu', e  => openCtxProyecto(e, card));
+  return card;
+}
+
+function actualizarLinksCountProyectoCard(card, entry) {
+  let el = card.querySelector('.proyecto-links-count');
+  if (entry.links.length > 0) {
+    if (!el) {
+      el = document.createElement('div');
+      el.className = 'proyecto-links-count';
+      card.querySelector('.proyecto-footer').before(el);
+    }
+    const n = entry.links.length;
+    el.innerHTML = `<i class="fas fa-link"></i> ${n} recurso${n > 1 ? 's' : ''}`;
+  } else if (el) {
+    el.remove();
+  }
+}
+
+function crearProyecto() {
+  const materia = proyectoMateria.value;
+  const tema    = proyectoTema.value.trim();
+  const fecha   = proyectoFecha.value;
+
+  if (!materia) { proyectoMateria.focus(); return; }
+  if (!tema)    { proyectoTema.focus();    return; }
+  if (!fecha)   { proyectoFecha.focus();   return; }
+
+  const url    = safeUrl(proyectoUrl.value.trim());
+  const nombre = proyectoNombreLink.value.trim();
+  const vence  = new Date(fecha + 'T00:00:00');
+  const entry  = { materia, tema, vence, links: [] };
+  if (url) entry.links.push({ url, nombre: nombre || tema });
+
+  proyectosData.push(entry);
+
+  const emptyEl = document.getElementById('proyectosEmpty');
+  if (emptyEl) emptyEl.remove();
+
+  proyectosGrid.appendChild(buildProyectoCard(entry));
+  actualizarStats();
+  guardarPortalData();
+  closeModalProyecto();
+}
+
+// ── Context menu proyecto ──
+const ctxMenuProyecto  = document.getElementById('ctxMenuProyecto');
+let   ctxProyectoTarget = null;
+
+function openCtxProyecto(e, card) {
+  e.preventDefault();
+  ctxProyectoTarget = card;
+  const x = Math.min(e.clientX, window.innerWidth  - 220);
+  const y = Math.min(e.clientY, window.innerHeight - 140);
+  ctxMenuProyecto.style.left = x + 'px';
+  ctxMenuProyecto.style.top  = y + 'px';
+  ctxMenuProyecto.classList.add('open');
+}
+function closeCtxProyecto() { ctxMenuProyecto.classList.remove('open'); }
+
+document.addEventListener('click',       closeCtxProyecto);
+document.addEventListener('contextmenu', e => { if (!e.target.closest('.proyecto-card')) closeCtxProyecto(); });
+
+// ── Marcar proyecto como completado ──
+const proyectosCompletados = [];
+
+function marcarProyectoCompletado() {
+  if (!ctxProyectoTarget) return;
+  const entry = ctxProyectoTarget._entry;
+  const idx   = proyectosData.indexOf(entry);
+  if (idx > -1) proyectosData.splice(idx, 1);
+  proyectosCompletados.push(entry);
+  ctxProyectoTarget.remove();
+  ctxProyectoTarget = null;
+  closeCtxProyecto();
+  if (!proyectosGrid.querySelector('.proyecto-card')) {
+    const msg = document.createElement('div');
+    msg.className = 'empty-state'; msg.id = 'proyectosEmpty';
+    msg.innerHTML = '<i class="fas fa-project-diagram"></i><p>No hay proyectos registrados</p>';
+    proyectosGrid.appendChild(msg);
+  }
+  actualizarEventosList(); actualizarActividadesSemana();
+  buildCalendar(calYear, calMonth); actualizarStats(); guardarPortalData();
+}
+
+document.getElementById('ctxProyectoComplete').addEventListener('click', marcarProyectoCompletado);
+
+// ── Modal Completados Proyecto ──
+const modalCompletadosProyecto = document.getElementById('modalCompletadosProyecto');
+
+function abrirCompletadosProyecto() {
+  const body  = document.getElementById('completadosProyectoBody');
+  body.querySelectorAll('.completados-examen-list').forEach(el => el.remove());
+
+  if (!proyectosCompletados.length) {
+    if (!document.getElementById('completadosProyectoEmpty')) {
+      const e = document.createElement('div');
+      e.className = 'empty-state'; e.id = 'completadosProyectoEmpty';
+      e.innerHTML = '<i class="fas fa-check-double"></i><p>Ningún proyecto marcado como completado</p>';
+      body.appendChild(e);
+    }
+    modalCompletadosProyecto.classList.add('open');
+    return;
+  }
+
+  const empty = document.getElementById('completadosProyectoEmpty');
+  if (empty) empty.remove();
+
+  const list = document.createElement('div');
+  list.className = 'completados-examen-list';
+
+  proyectosCompletados.forEach((entry, i) => {
+    const color = getMateriaColor(entry.materia);
+    const fechaTxt = entry.vence instanceof Date
+      ? entry.vence.toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' })
+      : entry.vence;
+
+    const item = document.createElement('div');
+    item.className = 'completado-examen-item';
+    item.style.setProperty('--ec', color);
+    item.innerHTML = `
+      <div class="completado-examen-icon"><i class="fas fa-check"></i></div>
+      <div class="completado-examen-info">
+        <div class="completado-examen-materia">${escHtml(entry.materia)}</div>
+        <div class="completado-examen-tema">${escHtml(entry.tema)}</div>
+        <div class="completado-examen-fecha"><i class="fas fa-calendar-alt" style="margin-right:.3rem"></i>${fechaTxt}</div>
+      </div>
+      <div class="completado-examen-acciones">
+        <button class="completado-examen-undo" title="Volver a proyectos" data-idx="${i}"><i class="fas fa-undo"></i> Deshacer</button>
+        <button class="completado-examen-del" title="Eliminar" data-idx="${i}"><i class="fas fa-trash"></i></button>
+      </div>`;
+    list.appendChild(item);
+  });
+
+  list.addEventListener('click', e => {
+    const btnUndo = e.target.closest('.completado-examen-undo');
+    if (btnUndo) {
+      const idx   = parseInt(btnUndo.dataset.idx, 10);
+      const entry = proyectosCompletados.splice(idx, 1)[0];
+      proyectosData.push(entry);
+      const emptyEl = document.getElementById('proyectosEmpty');
+      if (emptyEl) emptyEl.remove();
+      proyectosGrid.appendChild(buildProyectoCard(entry));
+      actualizarEventosList(); actualizarActividadesSemana();
+      buildCalendar(calYear, calMonth); actualizarStats(); guardarPortalData();
+      abrirCompletadosProyecto();
+      return;
+    }
+    const btnDel = e.target.closest('.completado-examen-del');
+    if (btnDel) {
+      const idx = parseInt(btnDel.dataset.idx, 10);
+      proyectosCompletados.splice(idx, 1);
+      guardarPortalData();
+      abrirCompletadosProyecto();
+    }
+  });
+
+  body.appendChild(list);
+  modalCompletadosProyecto.classList.add('open');
+}
+
+function cerrarCompletadosProyecto() { modalCompletadosProyecto.classList.remove('open'); }
+
+document.getElementById('btnCompletadosProyecto').addEventListener('click', abrirCompletadosProyecto);
+document.getElementById('completadosProyectoClose').addEventListener('click', cerrarCompletadosProyecto);
+document.getElementById('completadosProyectoCerrar').addEventListener('click', cerrarCompletadosProyecto);
+modalCompletadosProyecto.addEventListener('click', e => { if (e.target === modalCompletadosProyecto) cerrarCompletadosProyecto(); });
+
+// Eliminar proyecto
+document.getElementById('ctxProyectoDelete').addEventListener('click', () => {
+  if (!ctxProyectoTarget) return;
+  const idx = proyectosData.indexOf(ctxProyectoTarget._entry);
+  if (idx > -1) proyectosData.splice(idx, 1);
+  ctxProyectoTarget.remove();
+  ctxProyectoTarget = null;
+  closeCtxProyecto();
+  if (!proyectosGrid.querySelector('.proyecto-card')) {
+    const msg = document.createElement('div');
+    msg.className = 'empty-state'; msg.id = 'proyectosEmpty';
+    msg.innerHTML = '<i class="fas fa-project-diagram"></i><p>No hay proyectos registrados</p>';
+    proyectosGrid.appendChild(msg);
+  }
+  actualizarStats(); guardarPortalData();
+});
+
+// ── Renombrar proyecto ──
+const modalProyectoRename = document.getElementById('modalProyectoRename');
+const proyectoRenameInput = document.getElementById('proyectoRenameInput');
+
+function openProyectoRename() {
+  if (!ctxProyectoTarget) return;
+  proyectoRenameInput.value = ctxProyectoTarget._entry.tema;
+  modalProyectoRename.classList.add('open');
+  setTimeout(() => { proyectoRenameInput.focus(); proyectoRenameInput.select(); }, 120);
+  closeCtxProyecto();
+}
+function closeProyectoRename() { modalProyectoRename.classList.remove('open'); }
+
+document.getElementById('ctxProyectoRename').addEventListener('click',      openProyectoRename);
+document.getElementById('proyectoRenameClose').addEventListener('click',    closeProyectoRename);
+document.getElementById('proyectoRenameCancel').addEventListener('click',   closeProyectoRename);
+modalProyectoRename.addEventListener('click', e => { if (e.target === modalProyectoRename) closeProyectoRename(); });
+document.getElementById('proyectoRenameConfirm').addEventListener('click',  guardarNombreProyecto);
+proyectoRenameInput.addEventListener('keydown', e => { if (e.key === 'Enter') guardarNombreProyecto(); });
+
+function guardarNombreProyecto() {
+  const nombre = proyectoRenameInput.value.trim();
+  if (!nombre || !ctxProyectoTarget) { proyectoRenameInput.focus(); return; }
+  ctxProyectoTarget._entry.tema = nombre;
+  ctxProyectoTarget.querySelector('.proyecto-tema').textContent = nombre;
+  ctxProyectoTarget = null;
+  closeProyectoRename();
+  refrescarDetalleProyecto();
+  guardarPortalData();
+}
+
+// ── Agregar URL a proyecto ──
+const modalProyectoUrl  = document.getElementById('modalProyectoUrl');
+const proyectoUrlInput  = document.getElementById('proyectoUrlInput');
+const proyectoUrlNombre = document.getElementById('proyectoUrlNombre');
+
+function openProyectoUrl() {
+  if (!ctxProyectoTarget) return;
+  proyectoUrlInput.value  = '';
+  proyectoUrlNombre.value = '';
+  modalProyectoUrl.classList.add('open');
+  setTimeout(() => proyectoUrlInput.focus(), 120);
+  closeCtxProyecto();
+}
+function closeProyectoUrl() { modalProyectoUrl.classList.remove('open'); }
+
+document.getElementById('ctxProyectoAddUrl').addEventListener('click',   openProyectoUrl);
+document.getElementById('proyectoUrlClose').addEventListener('click',    closeProyectoUrl);
+document.getElementById('proyectoUrlCancel').addEventListener('click',   closeProyectoUrl);
+modalProyectoUrl.addEventListener('click', e => { if (e.target === modalProyectoUrl) closeProyectoUrl(); });
+document.getElementById('proyectoUrlConfirm').addEventListener('click',  agregarUrlProyecto);
+proyectoUrlNombre.addEventListener('keydown', e => { if (e.key === 'Enter') agregarUrlProyecto(); });
+
+function agregarUrlProyecto() {
+  const url    = safeUrl(proyectoUrlInput.value.trim());
+  const nombre = proyectoUrlNombre.value.trim();
+  if (!url) { proyectoUrlInput.focus(); return; }
+  if (!ctxProyectoTarget) return;
+  const entry = ctxProyectoTarget._entry;
+  entry.links.push({ url, nombre: nombre || entry.tema });
+  actualizarLinksCountProyectoCard(ctxProyectoTarget, entry);
+  ctxProyectoTarget = null;
+  closeProyectoUrl();
+  refrescarDetalleProyecto();
+  guardarPortalData();
+}
+
+// ── Detalle proyecto (click izquierdo) ──
+const modalDetalleProyecto = document.getElementById('modalDetalleProyecto');
+let   proyectoDetalleActual = null;
+
+function abrirDetalleProyecto(card) {
+  proyectoDetalleActual = card;
+  const entry = card._entry;
+  const color = card.style.getPropertyValue('--pc') || '#e67e22';
+
+  document.getElementById('detalleProyectoTitleSpan').textContent = entry.materia;
+
+  const hoy  = new Date(); hoy.setHours(0, 0, 0, 0);
+  const diff = Math.round((entry.vence - hoy) / 86400000);
+  const fechaLarga = entry.vence.toLocaleDateString('es-AR',
+    { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+  const diasStr = diff > 1 ? ` · En ${diff} días` : diff === 1 ? ' · Mañana'
+    : diff === 0 ? ' · ¡Hoy!' : ' · Ya pasó';
+
+  let html = `
+    <div class="proyecto-detalle-header" style="--pc:${escHtml(color)}">
+      <div class="proyecto-detalle-materia">${escHtml(entry.materia)}</div>
+      <div class="proyecto-detalle-tema">${escHtml(entry.tema)}</div>
+      <div class="proyecto-detalle-fecha"><i class="fas fa-calendar-alt"></i> ${fechaLarga}${diasStr}</div>
+    </div>
+    <div class="detalle-section-title"><i class="fas fa-link"></i> &nbsp;Recursos y material</div>`;
+
+  if (entry.links.length > 0) {
+    html += `<ul class="proyecto-links-list">`;
+    entry.links.forEach(({ url, nombre }) => {
+      html += `
+        <li class="proyecto-link-item">
+          <i class="fas fa-external-link-alt"></i>
+          <a href="${escHtml(url)}" target="_blank" rel="noopener noreferrer">${escHtml(nombre)}</a>
+        </li>`;
+    });
+    html += `</ul>`;
+  } else {
+    html += `<div class="detalle-empty"><i class="fas fa-info-circle"></i> Sin recursos. Clic derecho en el proyecto para agregar una URL.</div>`;
+  }
+
+  document.getElementById('detalleProyectoBody').innerHTML = html;
+  modalDetalleProyecto.classList.add('open');
+}
+
+function cerrarDetalleProyecto() {
+  modalDetalleProyecto.classList.remove('open');
+  proyectoDetalleActual = null;
+}
+function refrescarDetalleProyecto() {
+  if (proyectoDetalleActual && modalDetalleProyecto.classList.contains('open'))
+    abrirDetalleProyecto(proyectoDetalleActual);
+}
+
+document.getElementById('detalleProyectoClose').addEventListener('click',  cerrarDetalleProyecto);
+document.getElementById('detalleProyectoCerrar').addEventListener('click', cerrarDetalleProyecto);
+modalDetalleProyecto.addEventListener('click', e => { if (e.target === modalDetalleProyecto) cerrarDetalleProyecto(); });
+
 // ===== RESTAURAR TAREAS DESDE LOCALSTORAGE =====
 (function restaurarTareas() {
   try {
@@ -1791,6 +2515,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') cerrarDetall
       }
     });
     doneCountEl.textContent = doneCount;
+    actualizarMatCards();
   } catch(e) { console.error('restaurarTareas:', e); }
 })();
 
@@ -1807,6 +2532,41 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') cerrarDetall
       examenesGrid.appendChild(buildExamenCard(entry));
     });
   } catch(e) { console.error('restaurarExamenes:', e); }
+})();
+
+// ===== RESTAURAR EXÁMENES COMPLETADOS DESDE LOCALSTORAGE =====
+(function restaurarExamenesCompletados() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('portal_examenes_completados') || '[]');
+    saved.forEach(e => {
+      examenesCompletados.push({ materia: e.materia, tema: e.tema, vence: new Date(e.vence + 'T00:00:00'), links: e.links || [] });
+    });
+  } catch(e) { console.error('restaurarExamenesCompletados:', e); }
+})();
+
+// ===== RESTAURAR PROYECTOS DESDE LOCALSTORAGE =====
+(function restaurarProyectos() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('portal_proyectos') || '[]');
+    if (!saved.length) return;
+    const emptyEl = document.getElementById('proyectosEmpty');
+    if (emptyEl) emptyEl.remove();
+    saved.forEach(p => {
+      const entry = { materia: p.materia, tema: p.tema, vence: new Date(p.vence + 'T00:00:00'), links: p.links || [] };
+      proyectosData.push(entry);
+      proyectosGrid.appendChild(buildProyectoCard(entry));
+    });
+  } catch(e) { console.error('restaurarProyectos:', e); }
+})();
+
+// ===== RESTAURAR PROYECTOS COMPLETADOS DESDE LOCALSTORAGE =====
+(function restaurarProyectosCompletados() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('portal_proyectos_completados') || '[]');
+    saved.forEach(p => {
+      proyectosCompletados.push({ materia: p.materia, tema: p.tema, vence: new Date(p.vence + 'T00:00:00'), links: p.links || [] });
+    });
+  } catch(e) { console.error('restaurarProyectosCompletados:', e); }
 })();
 
 // ===== INIT =====

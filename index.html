@@ -130,7 +130,7 @@
       </div>
       <div class="stat-card">
         <div class="stat-icon green"><i class="fas fa-project-diagram"></i></div>
-        <div class="stat-info"><h3>0</h3><p>Proyectos activos</p></div>
+        <div class="stat-info"><h3 id="statProyectos">0</h3><p>Proyectos activos</p></div>
       </div>
       <div class="stat-card">
         <div class="stat-icon red"><i class="fas fa-bell"></i></div>
@@ -300,12 +300,20 @@
           <h2 class="page-title"><i class="fas fa-project-diagram"></i> Proyectos</h2>
           <p class="page-subtitle">Seguimiento de proyectos y trabajos grupales</p>
         </div>
-        <span class="pill">0 activos</span>
+        <div class="examenes-header-btns">
+          <button class="btn-completados-examen" id="btnCompletadosProyecto">
+            <i class="fas fa-check-double"></i> Completados
+          </button>
+          <button class="btn-add-plus" id="btnNuevoProyecto">
+            <i class="fas fa-plus"></i>
+          </button>
+        </div>
       </div>
-
-      <div class="empty-state">
-        <i class="fas fa-project-diagram"></i>
-        <p>No hay proyectos activos por el momento</p>
+      <div class="proyectos-grid" id="proyectosGrid">
+        <div class="empty-state" id="proyectosEmpty">
+          <i class="fas fa-project-diagram"></i>
+          <p>No hay proyectos registrados</p>
+        </div>
       </div>
     </div>
   </div><!-- /page-proyectos -->
@@ -319,9 +327,14 @@
           <h2 class="page-title"><i class="fas fa-file-alt"></i> Exámenes</h2>
           <p class="page-subtitle">Próximas evaluaciones y fechas de examen</p>
         </div>
-        <button class="btn-add-plus" id="btnNuevoExamen">
-          <i class="fas fa-plus"></i>
-        </button>
+        <div class="examenes-header-btns">
+          <button class="btn-completados-examen" id="btnCompletadosExamen">
+            <i class="fas fa-check-double"></i> Completados
+          </button>
+          <button class="btn-add-plus" id="btnNuevoExamen">
+            <i class="fas fa-plus"></i>
+          </button>
+        </div>
       </div>
       <div class="examenes-grid" id="examenesGrid">
         <div class="empty-state" id="examenesEmpty">
@@ -534,8 +547,28 @@
   <div class="ctx-menu" id="ctxMenuExamen">
     <button class="ctx-item" id="ctxExamenRename"><i class="fas fa-pencil-alt"></i> Cambiar nombre</button>
     <button class="ctx-item" id="ctxExamenAddUrl"><i class="fas fa-link"></i> Agregar URL</button>
+    <button class="ctx-item" id="ctxExamenComplete"><i class="fas fa-check-double"></i> Marcar completado</button>
     <div class="ctx-divider"></div>
     <button class="ctx-item ctx-danger" id="ctxExamenDelete"><i class="fas fa-trash"></i> Eliminar examen</button>
+  </div>
+
+  <!-- ========== MODAL COMPLETADOS EXAMEN ========== -->
+  <div class="modal-overlay" id="modalCompletadosExamen">
+    <div class="modal modal-completados-examen">
+      <div class="modal-header">
+        <h3><i class="fas fa-check-double"></i> Exámenes completados</h3>
+        <button class="modal-close" id="completadosExamenClose"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body" id="completadosExamenBody">
+        <div class="empty-state" id="completadosExamenEmpty">
+          <i class="fas fa-check-double"></i>
+          <p>Ningún examen marcado como completado</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="modal-btn-cancel" id="completadosExamenCerrar">Cerrar</button>
+      </div>
+    </div>
   </div>
 
   <!-- ========== MODAL RENOMBRAR EXAMEN ========== -->
@@ -585,6 +618,127 @@
       <div class="modal-body" id="detalleExamenBody"></div>
       <div class="modal-footer">
         <button class="modal-btn-cancel" id="detalleExamenCerrar">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== MODAL NUEVO PROYECTO ========== -->
+  <div class="modal-overlay" id="modalProyecto">
+    <div class="modal">
+      <div class="modal-header">
+        <h3><i class="fas fa-project-diagram"></i> Nuevo proyecto</h3>
+        <button class="modal-close" id="proyectoClose"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <label class="modal-label">Materia</label>
+        <select class="modal-input modal-select" id="proyectoMateria">
+          <option value="" disabled selected>Seleccioná una materia...</option>
+        </select>
+
+        <label class="modal-label" style="margin-top:1rem">Nombre del proyecto</label>
+        <input class="modal-input" id="proyectoTema" type="text" placeholder="Ej: Maqueta del sistema solar..." autocomplete="off"/>
+
+        <label class="modal-label" style="margin-top:1rem">Fecha de entrega</label>
+        <input class="modal-input modal-date" id="proyectoFecha" type="date"/>
+
+        <label class="modal-label" style="margin-top:1rem">URL <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted)">(opcional)</span></label>
+        <input class="modal-input" id="proyectoUrl" type="url" placeholder="https://..." autocomplete="off"/>
+
+        <label class="modal-label" style="margin-top:.65rem">Nombre del link <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted)">(opcional)</span></label>
+        <input class="modal-input" id="proyectoNombreLink" type="text" placeholder="Ej: Consigna del proyecto..." autocomplete="off"/>
+      </div>
+      <div class="modal-footer">
+        <button class="modal-btn-cancel" id="proyectoCancel">Cancelar</button>
+        <button class="modal-btn-confirm" id="proyectoConfirm">
+          <i class="fas fa-plus"></i> Agregar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== CONTEXT MENU CALENDARIO ========== -->
+  <div class="ctx-menu" id="ctxCalEvento">
+    <button class="ctx-item" id="ctxCalCompletar"><i class="fas fa-check-double"></i> <span>Marcar completado</span></button>
+    <button class="ctx-item" id="ctxCalIr"><i class="fas fa-arrow-right"></i> <span>Ir al evento</span></button>
+    <div class="ctx-divider"></div>
+    <button class="ctx-item ctx-danger" id="ctxCalEliminar"><i class="fas fa-trash"></i> Eliminar</button>
+  </div>
+
+  <!-- ========== CONTEXT MENU PROYECTO ========== -->
+  <div class="ctx-menu" id="ctxMenuProyecto">
+    <button class="ctx-item" id="ctxProyectoRename"><i class="fas fa-pencil-alt"></i> Cambiar nombre</button>
+    <button class="ctx-item" id="ctxProyectoAddUrl"><i class="fas fa-link"></i> Agregar URL</button>
+    <button class="ctx-item" id="ctxProyectoComplete"><i class="fas fa-check-double"></i> Marcar completado</button>
+    <div class="ctx-divider"></div>
+    <button class="ctx-item ctx-danger" id="ctxProyectoDelete"><i class="fas fa-trash"></i> Eliminar proyecto</button>
+  </div>
+
+  <!-- ========== MODAL COMPLETADOS PROYECTO ========== -->
+  <div class="modal-overlay" id="modalCompletadosProyecto">
+    <div class="modal modal-completados-examen">
+      <div class="modal-header">
+        <h3><i class="fas fa-check-double"></i> Proyectos completados</h3>
+        <button class="modal-close" id="completadosProyectoClose"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body" id="completadosProyectoBody">
+        <div class="empty-state" id="completadosProyectoEmpty">
+          <i class="fas fa-check-double"></i>
+          <p>Ningún proyecto marcado como completado</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="modal-btn-cancel" id="completadosProyectoCerrar">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== MODAL RENOMBRAR PROYECTO ========== -->
+  <div class="modal-overlay" id="modalProyectoRename">
+    <div class="modal">
+      <div class="modal-header">
+        <h3><i class="fas fa-pencil-alt"></i> Cambiar nombre</h3>
+        <button class="modal-close" id="proyectoRenameClose"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <input class="modal-input" id="proyectoRenameInput" type="text" placeholder="Nuevo nombre..." autocomplete="off"/>
+      </div>
+      <div class="modal-footer">
+        <button class="modal-btn-cancel" id="proyectoRenameCancel">Cancelar</button>
+        <button class="modal-btn-confirm" id="proyectoRenameConfirm"><i class="fas fa-check"></i> Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== MODAL AGREGAR URL A PROYECTO ========== -->
+  <div class="modal-overlay" id="modalProyectoUrl">
+    <div class="modal">
+      <div class="modal-header">
+        <h3><i class="fas fa-link"></i> Agregar URL</h3>
+        <button class="modal-close" id="proyectoUrlClose"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <label class="modal-label">URL</label>
+        <input class="modal-input" id="proyectoUrlInput" type="url" placeholder="https://..." autocomplete="off"/>
+        <label class="modal-label" style="margin-top:1rem">Nombre del link</label>
+        <input class="modal-input" id="proyectoUrlNombre" type="text" placeholder="Ej: Consigna del proyecto..." autocomplete="off"/>
+      </div>
+      <div class="modal-footer">
+        <button class="modal-btn-cancel" id="proyectoUrlCancel">Cancelar</button>
+        <button class="modal-btn-confirm" id="proyectoUrlConfirm"><i class="fas fa-plus"></i> Agregar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== MODAL DETALLE PROYECTO ========== -->
+  <div class="modal-overlay" id="modalDetalleProyecto">
+    <div class="modal modal-detalle-proyecto">
+      <div class="modal-header">
+        <h3><i class="fas fa-project-diagram"></i> <span id="detalleProyectoTitleSpan"></span></h3>
+        <button class="modal-close" id="detalleProyectoClose"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body" id="detalleProyectoBody"></div>
+      <div class="modal-footer">
+        <button class="modal-btn-cancel" id="detalleProyectoCerrar">Cerrar</button>
       </div>
     </div>
   </div>
