@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Portal Estudiantil</title>
-  <meta name="description" content="Portal estudiantil para gestionar apuntes, tareas, materias, proyectos y exámenes del colegio."/>
-  <meta name="keywords" content="portal estudiantil, apuntes, tareas, materias, exámenes, colegio"/>
+  <title>AulaSync</title>
+  <meta name="description" content="AulaSync — plataforma para gestionar apuntes, tareas, materias, proyectos y exámenes. Para todos los estudiantes."/>
+  <meta name="keywords" content="AulaSync, apuntes, tareas, materias, exámenes, estudiantes, plataforma estudiantil"/>
   <meta name="robots" content="index, follow"/>
   <link rel="stylesheet" href="style.css"/>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
@@ -25,7 +25,7 @@
     <div class="auth-card">
       <div class="auth-logo">
         <i class="fas fa-graduation-cap"></i>
-        <span>Portal Estudiantil</span>
+        <span>AulaSync</span>
       </div>
 
       <!-- LOGIN -->
@@ -55,7 +55,7 @@
   <header class="header">
     <div class="logo">
       <i class="fas fa-graduation-cap"></i>
-      <span>Portal Estudiantil</span>
+      <span>AulaSync</span>
     </div>
 
     <nav class="tabs">
@@ -1058,7 +1058,7 @@
     function getSystemPrompt(extraLinks, portalContext) {
       const hoy = new Date().toLocaleDateString('es-AR', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
 
-      return `Sos el asistente del Portal Estudiantil. Hoy es ${hoy}.
+      return `Sos el asistente del AulaSync. Hoy es ${hoy}.
 
 DATOS ACTUALES DEL PORTAL (usá esto como contexto, nunca lo repitas):
 ${portalContext}${extraLinks ? '\n\nCONTENIDO DE RECURSOS ADJUNTOS:\n' + extraLinks : ''}

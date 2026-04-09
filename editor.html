@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>Apunte — Portal Estudiantil</title>
+<title>Apunte — AulaSync</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
 <style>
 /* ── VARIABLES ────────────────────────────────── */
@@ -506,7 +506,7 @@ html, body {
 
   <!-- ══ TOPBAR ══════════════════════════════════════════════════════ -->
   <div class="topbar">
-    <div class="topbar-logo"><i class="fas fa-graduation-cap"></i> Portal Estudiantil</div>
+    <div class="topbar-logo"><i class="fas fa-graduation-cap"></i> AulaSync</div>
     <div class="topbar-sep"></div>
     <input class="topbar-title" id="docTitle" type="text" placeholder="Sin título..." spellcheck="false"/>
     <span class="topbar-words" id="wordCount">0 palabras</span>
@@ -783,7 +783,7 @@ const saved = JSON.parse(localStorage.getItem('apunte_' + noteId) || 'null');
 if (saved) {
   titleInp.value   = saved.title   || '';
   editor.innerHTML = saved.content || '';
-  document.title   = (saved.title || 'Apunte') + ' — Portal Estudiantil';
+  document.title   = (saved.title || 'Apunte') + ' — AulaSync';
 }
 
 // ── Paginación — constantes (deben estar antes del primer uso) ────────
@@ -804,7 +804,7 @@ function saveNote() {
   const data = { title: titleInp.value.trim(), content: editor.innerHTML };
   localStorage.setItem('apunte_' + noteId, JSON.stringify(data));
   statusEl.textContent = 'Guardado ✓';
-  document.title = (data.title || 'Apunte') + ' — Portal Estudiantil';
+  document.title = (data.title || 'Apunte') + ' — AulaSync';
   setTimeout(() => { statusEl.textContent = ''; }, 2500);
 }
 
@@ -1505,7 +1505,7 @@ async function sendAiMessage() {
 
   const hasImages = portalImages.length > 0;
 
-  const systemCtx = `Sos un asistente de estudio integrado en el Portal Estudiantil. Hoy es ${new Date().toLocaleDateString('es-AR', { weekday:'long', day:'numeric', month:'long', year:'numeric' })}.
+  const systemCtx = `Sos un asistente de estudio integrado en el AulaSync. Hoy es ${new Date().toLocaleDateString('es-AR', { weekday:'long', day:'numeric', month:'long', year:'numeric' })}.
 
 Respondés preguntas sobre las tareas, exámenes y apuntes del portal. El usuario siempre incluye los datos del portal al final de su mensaje. Leé esos datos y respondé en base a ellos.
 - Si hay links en los datos de una tarea, mencionálos.
