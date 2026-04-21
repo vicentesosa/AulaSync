@@ -1,7 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "Bash(ls -la /c/Users/USUARIO/paginas/colegio/*.html)"
+      "Bash(ls -la /c/Users/USUARIO/paginas/colegio/*.html)",
+      "Bash(unzip -l \"../AulaSync rediseño.zip\")",
+      "Bash(unzip -l \"AulaSync rediseño.zip\")",
+      "Bash(unzip -o \"AulaSync rediseño.zip\" \"AulaSync Home.html\" -d /tmp/aulasync_redesign)",
+      "Bash(unzip -o \"AulaSync rediseño.zip\" -d /tmp/aulasync_redesign/)"
     ]
   }
 }

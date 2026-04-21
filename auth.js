@@ -91,7 +91,13 @@ loginBtn.addEventListener('click', async () => {
   loginError.textContent = '';
   const { error } = await sb.auth.signInWithPassword({ email, password });
   if (error) {
-    loginError.textContent = 'Email o contraseña incorrectos.';
+    if (error.message?.toLowerCase().includes('invalid login') || error.message?.toLowerCase().includes('invalid credentials')) {
+      loginError.textContent = 'Email o contraseña incorrectos.';
+    } else if (error.message?.toLowerCase().includes('email not confirmed')) {
+      loginError.textContent = 'Debés confirmar tu email antes de iniciar sesión.';
+    } else {
+      loginError.textContent = 'Error: ' + error.message;
+    }
     loginBtn.disabled = false;
     loginBtn.textContent = 'Entrar';
   }
@@ -112,7 +118,7 @@ regBtn.addEventListener('click', async () => {
   regError.textContent = '';
   const { error } = await sb.auth.signUp({ email, password: pass });
   if (error) {
-    regError.textContent = 'No se pudo crear la cuenta. Intentá con otro email.';
+    regError.textContent = 'Error: ' + error.message;
     regBtn.disabled = false;
     regBtn.textContent = 'Crear cuenta';
   } else {

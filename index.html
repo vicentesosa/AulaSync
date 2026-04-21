@@ -17,8 +17,527 @@
         'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     }
   </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+  <style>
+    /* ═══════════════════════════════════════
+       AULASYNC REDESIGN — dark cyber theme
+       ═══════════════════════════════════════ */
+    :root {
+      --header-h: 64px; /* sincronizar con la altura del nuevo header */
+      --new-bg: #060b14;
+      --new-surface: rgba(11,18,32,0.88);
+      --new-surface2: rgba(16,26,46,0.92);
+      --new-cyan: #00e5ff;
+      --new-purple: #c084fc;
+      --new-blue: #60a5fa;
+      --new-green: #34d399;
+      --new-orange: #fb923c;
+      --new-red: #f87171;
+      --new-text: #e2e8f0;
+      --new-dim: #94a3b8;
+      --led-color1: #00e5ff;
+      --led-color2: #c084fc;
+      --led-speed: 3s;
+    }
+    body {
+      font-family: 'Space Grotesk', 'Inter', sans-serif !important;
+      background: var(--new-bg) !important;
+      color: var(--new-text) !important;
+    }
+
+    /* ─── BACKGROUND ─── */
+    .bg-layer {
+      position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    }
+    .bg-grid {
+      position: absolute; inset: 0;
+      background-image:
+        linear-gradient(rgba(0,229,255,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,229,255,0.04) 1px, transparent 1px);
+      background-size: 48px 48px;
+    }
+    .bg-glow {
+      position: absolute; border-radius: 50%;
+      filter: blur(120px); opacity: 0.18;
+      animation: pulse-glow 8s ease-in-out infinite alternate;
+      will-change: opacity; /* solo anima opacity, GPU puede manejarlo */
+    }
+    .bg-glow-1 { width:600px; height:600px; background:#00e5ff; top:-200px; left:-150px; }
+    .bg-glow-2 { width:500px; height:500px; background:#c084fc; bottom:-100px; right:-100px; animation-delay:-4s; }
+    .bg-glow-3 { width:300px; height:300px; background:#60a5fa; top:40%; left:55%; animation-delay:-2s; }
+    @keyframes pulse-glow {
+      from { opacity:0.12; transform:scale(1); }
+      to   { opacity:0.22; transform:scale(1.1); }
+    }
+
+    /* ─── STACKING ─── */
+    .auth-overlay, .modal-overlay, .ia-panel-overlay,
+    .ctx-menu, .apunte-dropdown { z-index: 1000 !important; }
+    /* No tocar position de .header ni .page — style.css usa fixed+overflow-y:scroll */
+    .header { z-index: 200 !important; }
+    .page { z-index: 1; scroll-behavior: smooth; }
+
+    /* Fade-in al activar una pestaña */
+    @keyframes tab-fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+    .page.active { animation: tab-fade 0.2s ease forwards; }
+
+    /* ─── LED BORDER — usa transform:rotate() para correr en el compositor GPU ─── */
+    @keyframes spin-led { to { transform: translate(-50%,-50%) rotate(360deg); } }
+
+    .led-wrap {
+      position: relative;
+      border-radius: 14px;
+      padding: 1.5px;
+      overflow: hidden; /* el ::before rotante queda clippeado a la forma */
+      flex-shrink: 0;
+    }
+    .led-wrap::before {
+      content: '';
+      position: absolute;
+      width: 200%; height: 200%;
+      top: 50%; left: 50%;
+      transform: translate(-50%,-50%) rotate(0deg);
+      background: conic-gradient(
+        from 0deg,
+        transparent 25%,
+        var(--led-color1,#00e5ff) 38%,
+        var(--led-color2,#c084fc) 60%,
+        transparent 73%
+      );
+      animation: spin-led var(--led-speed,4s) linear infinite;
+      will-change: transform;
+    }
+    /* El hijo directo queda encima del gradiente */
+    .led-wrap > * { position: relative; z-index: 1; }
+
+    /* ─── HEADER / NAVBAR ─── */
+    .header {
+      background: rgba(6,11,20,0.92) !important;
+      backdrop-filter: blur(20px) !important;
+      border-bottom: 1px solid rgba(0,229,255,0.14) !important;
+      box-shadow: 0 0 40px rgba(0,229,255,0.05) !important;
+      padding: 0 28px !important;
+      height: 64px !important;
+      display: flex !important; align-items: center !important; gap: 0 !important;
+    }
+    .logo {
+      display: flex !important; align-items: center !important;
+      gap: 10px !important; margin-right: 36px !important;
+      text-decoration: none;
+    }
+    .logo-icon-new {
+      width: 36px; height: 36px; border-radius: 10px;
+      background: linear-gradient(135deg, #00e5ff, #c084fc);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; box-shadow: 0 0 16px rgba(0,229,255,0.45);
+    }
+    .logo .fas { display: none !important; }
+    .logo > span {
+      font-family: 'Space Mono', monospace !important;
+      font-size: 18px !important; font-weight: 700 !important;
+      background: linear-gradient(90deg, #00e5ff, #c084fc) !important;
+      -webkit-background-clip: text !important;
+      -webkit-text-fill-color: transparent !important;
+      letter-spacing: -0.5px !important;
+    }
+    .tabs {
+      display: flex !important; align-items: center !important;
+      gap: 2px !important; flex: 1 !important;
+      background: none !important; border: none !important; padding: 0 !important;
+    }
+    .tab {
+      padding: 7px 12px !important; border-radius: 8px !important;
+      font-size: 13px !important; font-weight: 500 !important;
+      color: var(--new-dim) !important; cursor: pointer !important;
+      transition: all 0.2s !important; display: flex !important;
+      align-items: center !important; gap: 6px !important;
+      border: none !important; background: transparent !important;
+      font-family: 'Space Grotesk', sans-serif !important;
+      white-space: nowrap !important;
+    }
+    .tab:hover {
+      color: var(--new-text) !important;
+      background: rgba(255,255,255,0.06) !important;
+    }
+    .tab.active {
+      color: var(--new-cyan) !important;
+      background: rgba(0,229,255,0.1) !important;
+      box-shadow: 0 0 12px rgba(0,229,255,0.14), inset 0 0 12px rgba(0,229,255,0.05) !important;
+    }
+    .tab-dot {
+      width: 5px; height: 5px; border-radius: 50%;
+      background: var(--new-cyan); box-shadow: 0 0 6px var(--new-cyan);
+      display: none !important;
+    }
+    .tab.active .tab-dot { display: inline-block !important; }
+    .user-info {
+      display: flex !important; align-items: center !important;
+      gap: 10px !important; margin-left: auto !important;
+      padding: 5px 14px 5px 8px !important; border-radius: 40px !important;
+      border: 1px solid rgba(192,132,252,0.25) !important;
+      background: rgba(192,132,252,0.07) !important;
+      transition: all 0.2s !important;
+    }
+    .user-info:hover {
+      border-color: rgba(192,132,252,0.5) !important;
+      background: rgba(192,132,252,0.12) !important;
+    }
+    .user-avatar { display: none !important; }
+    .user-avatar-new {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: linear-gradient(135deg, #c084fc, #60a5fa);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 700;
+      box-shadow: 0 0 12px rgba(192,132,252,0.4); color: #fff;
+      flex-shrink: 0;
+    }
+    .user-text { line-height: 1.25 !important; }
+    .user-name { font-size: 13px !important; font-weight: 600 !important; color: var(--new-text) !important; display: block !important; }
+    .user-grade { font-size: 11px !important; color: var(--new-dim) !important; }
+    .logout-btn {
+      background: transparent !important; border: none !important;
+      color: var(--new-dim) !important; cursor: pointer !important;
+      font-size: 14px !important; padding: 4px 2px !important;
+      transition: color 0.2s !important; line-height: 1 !important;
+    }
+    .logout-btn:hover { color: var(--new-red) !important; }
+
+    /* ─── PAGE-INICIO: LAYOUT ─── */
+    #page-inicio {
+      padding: 40px 40px 60px !important;
+    }
+
+    /* ─── HERO ─── */
+    .inicio-hero {
+      display: flex !important; align-items: flex-start !important;
+      justify-content: space-between !important; gap: 32px !important;
+      margin-bottom: 40px !important;
+      background: none !important; border: none !important;
+      padding: 0 !important; border-radius: 0 !important;
+      box-shadow: none !important;
+    }
+    .inicio-hero-text { flex: 1 !important; padding: 0 !important; }
+    .hero-date {
+      font-family: 'Space Mono', monospace !important;
+      font-size: 11px !important; letter-spacing: 2px !important;
+      color: var(--new-cyan) !important; text-transform: uppercase !important;
+      margin-bottom: 10px !important; opacity: 0.8 !important;
+    }
+    .hero-title {
+      font-size: 44px !important; font-weight: 700 !important; line-height: 1.1 !important;
+      margin-bottom: 12px !important;
+      background: linear-gradient(135deg, #fff 40%, var(--new-cyan) 100%) !important;
+      -webkit-background-clip: text !important; -webkit-text-fill-color: transparent !important;
+    }
+    .hero-sub {
+      font-size: 15px !important; color: var(--new-dim) !important;
+      max-width: 420px !important; line-height: 1.6 !important; margin-bottom: 24px !important;
+    }
+    .hero-badges { display: flex !important; gap: 8px !important; flex-wrap: wrap !important; }
+    .badge {
+      display: inline-flex !important; align-items: center !important;
+      gap: 6px !important; padding: 5px 12px !important; border-radius: 20px !important;
+      font-size: 12px !important; font-weight: 600 !important;
+      letter-spacing: 0.2px !important; border: 1px solid !important;
+    }
+    .badge.badge-success {
+      background: rgba(52,211,153,0.1) !important;
+      border-color: rgba(52,211,153,0.3) !important; color: var(--new-green) !important;
+    }
+    .badge.badge-warning {
+      background: rgba(251,146,60,0.1) !important;
+      border-color: rgba(251,146,60,0.3) !important; color: var(--new-orange) !important;
+    }
+    .badge.badge-danger {
+      background: rgba(248,113,113,0.1) !important;
+      border-color: rgba(248,113,113,0.3) !important; color: var(--new-red) !important;
+    }
+    #heroBadgeEventos.badge-success {
+      background: rgba(96,165,250,0.1) !important;
+      border-color: rgba(96,165,250,0.3) !important; color: var(--new-blue) !important;
+    }
+    #heroBadgeProyectos.badge-success {
+      background: rgba(251,146,60,0.1) !important;
+      border-color: rgba(251,146,60,0.3) !important; color: var(--new-orange) !important;
+    }
+
+    /* Hero IA */
+    .hero-ia-wrap {
+      flex-shrink: 0 !important; align-self: center !important;
+      width: 264px !important; min-width: unset !important;
+      background: rgba(16,26,46,0.97) !important;
+      border: none !important;
+      border-radius: 14.5px !important; padding: 20px 22px !important;
+      transition: transform 0.2s ease !important;
+    }
+    .hero-ia-wrap:hover { transform: translateY(-2px) !important; }
+    .hero-ia-wrap.open { transform: none !important; }
+    .hero-ia-wrap.open .hero-ia-btn { display: flex !important; }
+    .ai-card-icon-new {
+      width: 44px; height: 44px; border-radius: 12px;
+      background: linear-gradient(135deg, rgba(192,132,252,0.3), rgba(96,165,250,0.3));
+      border: 1px solid rgba(192,132,252,0.3);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; margin-bottom: 12px;
+      box-shadow: 0 0 20px rgba(192,132,252,0.2);
+    }
+    .hero-ia-btn {
+      width: 100% !important; background: transparent !important;
+      border: none !important; color: var(--new-text) !important;
+      font-size: 15px !important; font-weight: 600 !important;
+      font-family: 'Space Grotesk', sans-serif !important;
+      text-align: left !important; padding: 0 !important;
+      margin-bottom: 4px !important; cursor: pointer !important;
+      display: flex !important; align-items: center !important; gap: 8px !important;
+    }
+    .hero-ia-btn .fas { color: var(--new-purple) !important; }
+    .ai-card-sub-text {
+      font-size: 12px !important; color: var(--new-dim) !important;
+      line-height: 1.4 !important; margin: 0 !important;
+    }
+    .hero-ia-input-row {
+      display: none !important; margin-top: 12px !important;
+      align-items: center !important; gap: 6px !important;
+    }
+    .hero-ia-wrap.open .hero-ia-input-row { display: flex !important; }
+    .hero-ia-input {
+      flex: 1 !important;
+      background: rgba(255,255,255,0.07) !important;
+      border: 1px solid rgba(0,229,255,0.22) !important;
+      border-radius: 8px !important; padding: 8px 12px !important;
+      color: var(--new-text) !important; font-family: 'Space Grotesk', sans-serif !important;
+      font-size: 13px !important; outline: none !important;
+    }
+    .hero-ia-input:focus {
+      border-color: rgba(0,229,255,0.5) !important;
+      box-shadow: 0 0 12px rgba(0,229,255,0.12) !important;
+    }
+    .hero-ia-send {
+      background: linear-gradient(135deg, var(--new-cyan), var(--new-purple)) !important;
+      border: none !important; border-radius: 8px !important;
+      padding: 8px 12px !important; color: #060b14 !important;
+      cursor: pointer !important; font-size: 13px !important;
+      flex-shrink: 0 !important;
+    }
+
+    /* ─── SECTION LABELS (inicio) ─── */
+    #page-inicio .inicio-label {
+      font-family: 'Space Mono', monospace !important;
+      font-size: 10px !important; letter-spacing: 2.5px !important;
+      text-transform: uppercase !important; color: var(--new-dim) !important;
+      margin-bottom: 16px !important; margin-top: 40px !important;
+    }
+
+    /* ─── STATS ─── */
+    .inicio-stats {
+      display: grid !important;
+      grid-template-columns: repeat(4, 1fr) !important;
+      gap: 16px !important; margin-bottom: 0 !important;
+    }
+    .inicio-stats .stat-card {
+      background: rgba(11,18,32,0.97) !important;
+      border: none !important;
+      border-radius: 12.5px !important; padding: 20px !important;
+      display: flex !important; align-items: center !important; gap: 16px !important;
+      cursor: pointer !important;
+      transition: transform 0.18s ease !important;
+    }
+    .inicio-stats .stat-card:hover { transform: translateY(-3px) !important; }
+    .inicio-stats .stat-icon {
+      width: 48px !important; height: 48px !important; border-radius: 12px !important;
+      display: flex !important; align-items: center !important; justify-content: center !important;
+      font-size: 20px !important; flex-shrink: 0 !important;
+    }
+    .inicio-stats .stat-icon.purple { background: rgba(192,132,252,0.14) !important; color: var(--new-purple) !important; }
+    .inicio-stats .stat-icon.orange { background: rgba(251,146,60,0.14) !important; color: var(--new-orange) !important; }
+    .inicio-stats .stat-icon.green  { background: rgba(52,211,153,0.14) !important; color: var(--new-green) !important; }
+    .inicio-stats .stat-icon.red    { background: rgba(248,113,113,0.14) !important; color: var(--new-red) !important; }
+    .inicio-stats .stat-info h3 {
+      font-family: 'Space Mono', monospace !important;
+      font-size: 30px !important; font-weight: 700 !important; line-height: 1 !important;
+      color: var(--new-text) !important; margin: 0 !important;
+    }
+    .inicio-stats .stat-info p {
+      font-size: 12px !important; color: var(--new-dim) !important; margin: 3px 0 0 !important;
+    }
+
+    /* ─── QUICK NAV ─── */
+    .quick-nav {
+      display: grid !important;
+      grid-template-columns: repeat(2, 1fr) !important;
+      gap: 16px !important;
+    }
+    .qnav-btn {
+      background: rgba(11,18,32,0.97) !important;
+      border: none !important;
+      border-radius: 12.5px !important;
+      padding: 20px 22px !important; display: flex !important;
+      align-items: center !important; gap: 18px !important;
+      cursor: pointer !important;
+      transition: transform 0.18s ease !important;
+      text-align: left !important; width: 100% !important; min-height: 88px !important;
+    }
+    .qnav-btn:hover { transform: translateY(-3px) !important; }
+    .qnav-icon {
+      width: 50px !important; height: 50px !important; border-radius: 14px !important;
+      display: flex !important; align-items: center !important; justify-content: center !important;
+      font-size: 20px !important; flex-shrink: 0 !important;
+    }
+    .qnav-text h3 {
+      font-size: 15px !important; font-weight: 600 !important;
+      margin: 0 0 3px !important; color: var(--new-text) !important;
+    }
+    .qnav-text p { font-size: 13px !important; color: var(--new-dim) !important; margin: 0 !important; }
+    .qnav-arrow {
+      margin-left: auto !important; color: var(--new-dim) !important;
+      font-size: 16px !important; transition: all 0.2s !important; flex-shrink: 0 !important;
+    }
+    .qnav-btn:hover .qnav-arrow { color: var(--new-text) !important; transform: translateX(4px) !important; }
+
+    /* ─── ACTIVITIES ─── */
+    #actividadesSemana .empty-state {
+      background: var(--new-surface) !important;
+      border: 1px solid rgba(255,255,255,0.06) !important;
+      border-radius: 14px !important; padding: 40px !important;
+      text-align: center !important; color: var(--new-dim) !important;
+    }
+    #actividadesSemana .empty-state i { font-size: 30px !important; display: block !important; margin-bottom: 10px !important; }
+
+    /* ─── OTHER PAGES — dark adaptation ─── */
+    .page-title { color: var(--new-text) !important; }
+    .page-subtitle { color: var(--new-dim) !important; }
+    .page-header { border-color: rgba(255,255,255,0.06) !important; }
+    .btn-add-plus {
+      background: linear-gradient(135deg, var(--new-cyan), var(--new-purple)) !important;
+      color: #060b14 !important; border: none !important;
+      box-shadow: 0 0 16px rgba(0,229,255,0.3) !important;
+    }
+    .btn-add-task {
+      background: linear-gradient(135deg, var(--new-cyan), var(--new-purple)) !important;
+      color: #060b14 !important; border: none !important;
+      box-shadow: 0 0 16px rgba(0,229,255,0.3) !important;
+    }
+    .touch-hint { color: var(--new-dim) !important; }
+
+    /* Materias cards */
+    .mat-card { background: var(--new-surface) !important; border-color: rgba(255,255,255,0.07) !important; }
+    .mat-card h3 { color: var(--new-text) !important; }
+
+    /* Tareas */
+    .tareas-col { background: var(--new-surface) !important; border-color: rgba(255,255,255,0.07) !important; }
+    .task-item { background: rgba(255,255,255,0.04) !important; border-color: rgba(255,255,255,0.07) !important; }
+    .task-item .task-name { color: var(--new-text) !important; }
+    .task-item .task-meta { color: var(--new-dim) !important; }
+    .col-head { color: var(--new-text) !important; border-color: rgba(255,255,255,0.08) !important; }
+    .no-tasks-msg { color: var(--new-dim) !important; }
+
+    /* Proyectos / Exámenes */
+    .proyecto-card, .examen-card {
+      background: var(--new-surface) !important; border-color: rgba(255,255,255,0.07) !important;
+    }
+    .proyecto-card h3, .examen-card h3 { color: var(--new-text) !important; }
+
+    /* Apuntes */
+    .apunte-card { background: var(--new-surface) !important; border-color: rgba(255,255,255,0.07) !important; }
+    .apunte-card-title { color: var(--new-text) !important; }
+
+    /* Calendario */
+    .cal-box, .events-box { background: var(--new-surface) !important; border-color: rgba(255,255,255,0.07) !important; }
+    .events-title { color: var(--new-text) !important; }
+
+    /* Modals */
+    .modal {
+      background: rgba(8,14,26,0.98) !important;
+      border: 1px solid rgba(255,255,255,0.1) !important;
+    }
+    .modal-header { border-bottom: 1px solid rgba(255,255,255,0.08) !important; color: var(--new-text) !important; }
+    .modal-header h3 { color: var(--new-text) !important; }
+    .modal-label { color: var(--new-dim) !important; }
+    .modal-input {
+      background: rgba(255,255,255,0.06) !important;
+      border: 1px solid rgba(255,255,255,0.12) !important;
+      color: var(--new-text) !important;
+    }
+    .modal-input:focus { border-color: rgba(0,229,255,0.5) !important; box-shadow: 0 0 10px rgba(0,229,255,0.1) !important; outline: none !important; }
+    .modal-input option { background: #0d1625; color: var(--new-text); }
+    .modal-btn-confirm {
+      background: linear-gradient(135deg, var(--new-cyan), var(--new-purple)) !important;
+      color: #060b14 !important; border: none !important;
+    }
+    .modal-btn-cancel { background: rgba(255,255,255,0.07) !important; color: var(--new-text) !important; border: none !important; }
+    .modal-close { color: var(--new-dim) !important; background: transparent !important; border: none !important; cursor: pointer !important; }
+
+    /* Context menus */
+    .ctx-menu { background: rgba(8,14,26,0.98) !important; border: 1px solid rgba(255,255,255,0.1) !important; }
+    .ctx-item { color: var(--new-text) !important; }
+    .ctx-item:hover { background: rgba(255,255,255,0.07) !important; }
+    .ctx-danger { color: var(--new-red) !important; }
+
+    /* IA panel */
+    .ia-panel { background: rgba(8,14,26,0.98) !important; border: 1px solid rgba(0,229,255,0.15) !important; }
+    .ia-panel-header { background: rgba(0,229,255,0.07) !important; color: var(--new-text) !important; border-color: rgba(0,229,255,0.15) !important; }
+    .ia-panel-input {
+      background: rgba(255,255,255,0.06) !important;
+      border: 1px solid rgba(255,255,255,0.1) !important;
+      color: var(--new-text) !important;
+    }
+    .ia-panel-send { background: linear-gradient(135deg, var(--new-cyan), var(--new-purple)) !important; color: #060b14 !important; border: none !important; }
+    .ia-msg.bot { background: rgba(255,255,255,0.05) !important; color: var(--new-text) !important; }
+    .ia-msg.user { background: rgba(0,229,255,0.1) !important; color: var(--new-text) !important; }
+
+    /* Auth overlay */
+    .auth-overlay { background: rgba(6,11,20,0.97) !important; }
+    .auth-card {
+      background: rgba(11,18,32,0.95) !important;
+      border: 1px solid rgba(0,229,255,0.15) !important;
+      box-shadow: 0 0 60px rgba(0,229,255,0.1) !important;
+    }
+    .auth-logo { color: var(--new-cyan) !important; }
+    .auth-title { color: var(--new-text) !important; }
+    .auth-input {
+      background: rgba(255,255,255,0.06) !important;
+      border: 1px solid rgba(255,255,255,0.12) !important;
+      color: var(--new-text) !important;
+    }
+    .auth-input:focus { border-color: rgba(0,229,255,0.5) !important; outline: none !important; }
+    .auth-btn { background: linear-gradient(135deg, var(--new-cyan), var(--new-purple)) !important; color: #060b14 !important; font-weight: 700 !important; border: none !important; }
+    .auth-switch { color: var(--new-dim) !important; }
+    .auth-switch a { color: var(--new-cyan) !important; }
+
+    /* Misc pills used outside inicio */
+    .pill-badge, .col-count { background: rgba(255,255,255,0.1) !important; color: var(--new-dim) !important; }
+
+    /* Apuntes dropdown */
+    .apunte-dropdown { background: rgba(8,14,26,0.98) !important; border: 1px solid rgba(255,255,255,0.1) !important; }
+    .apunte-dropdown-item { color: var(--new-text) !important; }
+    .apunte-dropdown-item:hover { background: rgba(255,255,255,0.07) !important; }
+
+    /* Scrollbars */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(0,229,255,0.3); }
+
+    @media (max-width: 900px) {
+      #page-inicio { padding: 24px 20px 48px !important; }
+      .inicio-hero { flex-direction: column !important; }
+      .hero-ia-wrap { width: 100% !important; align-self: stretch !important; }
+      .hero-title { font-size: 32px !important; }
+      .inicio-stats { grid-template-columns: repeat(2, 1fr) !important; }
+      .quick-nav { grid-template-columns: 1fr !important; }
+    }
+  </style>
 </head>
 <body>
+
+  <!-- Background -->
+  <div class="bg-layer">
+    <div class="bg-grid"></div>
+    <div class="bg-glow bg-glow-1"></div>
+    <div class="bg-glow bg-glow-2"></div>
+    <div class="bg-glow bg-glow-3"></div>
+  </div>
 
   <!-- ========== AUTH OVERLAY ========== -->
   <div class="auth-overlay" id="authOverlay">
@@ -54,36 +573,43 @@
   <!-- ========== HEADER ========== -->
   <header class="header">
     <div class="logo">
-      <i class="fas fa-graduation-cap"></i>
+      <div class="logo-icon-new">⚡</div>
       <span>AulaSync</span>
     </div>
 
     <nav class="tabs">
       <button class="tab active" data-tab="inicio">
-        <i class="fas fa-home"></i><span>Inicio</span>
+        <span class="tab-dot"></span>
+        <i class="fas fa-home"></i> Inicio
       </button>
       <button class="tab" data-tab="apuntes">
-        <i class="fas fa-sticky-note"></i><span>Apuntes</span>
+        <span class="tab-dot"></span>
+        <i class="fas fa-sticky-note"></i> Apuntes
       </button>
       <button class="tab" data-tab="materias">
-        <i class="fas fa-book"></i><span>Materias</span>
+        <span class="tab-dot"></span>
+        <i class="fas fa-book"></i> Materias
       </button>
       <button class="tab" data-tab="tareas">
-        <i class="fas fa-tasks"></i><span>Tareas</span>
+        <span class="tab-dot"></span>
+        <i class="fas fa-tasks"></i> Tareas
       </button>
       <button class="tab" data-tab="proyectos">
-        <i class="fas fa-project-diagram"></i><span>Proyectos</span>
+        <span class="tab-dot"></span>
+        <i class="fas fa-project-diagram"></i> Proyectos
       </button>
       <button class="tab" data-tab="examenes">
-        <i class="fas fa-file-alt"></i><span>Exámenes</span>
+        <span class="tab-dot"></span>
+        <i class="fas fa-file-alt"></i> Exámenes
       </button>
       <button class="tab" data-tab="calendario">
-        <i class="fas fa-calendar-alt"></i><span>Calendario</span>
+        <span class="tab-dot"></span>
+        <i class="fas fa-calendar-alt"></i> Calendario
       </button>
     </nav>
 
     <div class="user-info">
-      <i class="fas fa-user-circle user-avatar"></i>
+      <div class="user-avatar-new">E</div>
       <div class="user-text">
         <span class="user-name" id="userEmailSpan">Estudiante</span>
         <span class="user-grade">5° Año</span>
@@ -102,7 +628,7 @@
     <div class="inicio-hero">
       <div class="inicio-hero-text">
         <p class="hero-date" id="fechaHoy"></p>
-        <h1 class="hero-title">¡Buen día! <span class="wave">👋</span></h1>
+        <h1 class="hero-title">¡Buen día! 👋</h1>
         <p class="hero-sub">Este es tu portal estudiantil. Navegá por las secciones usando los botones de abajo o el menú de arriba.</p>
         <div class="hero-badges">
           <span class="badge badge-success" id="heroBadgeTareas"><i class="fas fa-check-circle"></i> Sin tareas pendientes</span>
@@ -110,88 +636,95 @@
           <span class="badge badge-success" id="heroBadgeProyectos"><i class="fas fa-star"></i> Sin proyectos activos</span>
         </div>
       </div>
-      <div class="hero-ia-wrap" id="heroIaWrap">
-        <button class="hero-ia-btn" id="heroIaBtn">
-          <i class="fas fa-robot"></i> Preguntar a la IA
-        </button>
-        <div class="hero-ia-input-row" id="heroIaInputRow">
-          <input class="hero-ia-input" id="heroIaInput" type="text" placeholder="Escribí tu pregunta..."/>
-          <button class="hero-ia-send" id="heroIaSend"><i class="fas fa-paper-plane"></i></button>
+      <div class="led-wrap" style="border-radius:16px;--led-color1:#c084fc;--led-color2:#60a5fa;--led-speed:5s">
+        <div class="hero-ia-wrap" id="heroIaWrap">
+          <div class="ai-card-icon-new">✦</div>
+          <button class="hero-ia-btn" id="heroIaBtn">
+            <i class="fas fa-robot"></i> Preguntar a la IA
+          </button>
+          <p class="ai-card-sub-text">Consultá dudas, pedí resúmenes o explicaciones al instante.</p>
+          <div class="hero-ia-input-row" id="heroIaInputRow">
+            <input class="hero-ia-input" id="heroIaInput" type="text" placeholder="Escribí tu pregunta..."/>
+            <button class="hero-ia-send" id="heroIaSend"><i class="fas fa-paper-plane"></i></button>
+          </div>
         </div>
       </div>
     </div>
 
     <!-- Stats rápidos -->
+    <div class="inicio-label">Resumen del día</div>
     <div class="inicio-stats">
-      <div class="stat-card">
-        <div class="stat-icon purple"><i class="fas fa-book"></i></div>
-        <div class="stat-info"><h3 id="statMaterias">0</h3><p>Materias</p></div>
+      <div class="led-wrap" style="--led-color1:#00e5ff;--led-color2:#0ea5e9;--led-speed:5s">
+        <div class="stat-card">
+          <div class="stat-icon purple"><i class="fas fa-book"></i></div>
+          <div class="stat-info"><h3 id="statMaterias">0</h3><p>Materias</p></div>
+        </div>
       </div>
-      <div class="stat-card">
-        <div class="stat-icon orange"><i class="fas fa-clipboard-list"></i></div>
-        <div class="stat-info"><h3 id="statTareasPend">0</h3><p>Tareas pendientes</p></div>
+      <div class="led-wrap" style="--led-color1:#fb923c;--led-color2:#ef4444;--led-speed:6s">
+        <div class="stat-card">
+          <div class="stat-icon orange"><i class="fas fa-clipboard-list"></i></div>
+          <div class="stat-info"><h3 id="statTareasPend">0</h3><p>Tareas pendientes</p></div>
+        </div>
       </div>
-      <div class="stat-card">
-        <div class="stat-icon green"><i class="fas fa-project-diagram"></i></div>
-        <div class="stat-info"><h3 id="statProyectos">0</h3><p>Proyectos activos</p></div>
+      <div class="led-wrap" style="--led-color1:#34d399;--led-color2:#059669;--led-speed:7s">
+        <div class="stat-card">
+          <div class="stat-icon green"><i class="fas fa-project-diagram"></i></div>
+          <div class="stat-info"><h3 id="statProyectos">0</h3><p>Proyectos activos</p></div>
+        </div>
       </div>
-      <div class="stat-card">
-        <div class="stat-icon red"><i class="fas fa-bell"></i></div>
-        <div class="stat-info"><h3 id="statExamenes">0</h3><p>Examen próximo</p></div>
+      <div class="led-wrap" style="--led-color1:#f87171;--led-color2:#c084fc;--led-speed:8s">
+        <div class="stat-card">
+          <div class="stat-icon red"><i class="fas fa-bell"></i></div>
+          <div class="stat-info"><h3 id="statExamenes">0</h3><p>Examen próximo</p></div>
+        </div>
       </div>
     </div>
 
     <!-- Botones de acceso rápido -->
     <div class="inicio-label">Acceso rápido</div>
     <div class="quick-nav">
-      <button class="qnav-btn" data-goto="materias" style="--c:#6c63ff">
-        <div class="qnav-icon"><i class="fas fa-book"></i></div>
-        <div class="qnav-text">
-          <h3>Materias</h3>
-          <p id="qnavMaterias">Sin materias registradas</p>
-        </div>
-        <i class="fas fa-arrow-right qnav-arrow"></i>
-      </button>
-      <button class="qnav-btn" data-goto="tareas" style="--c:#e74c3c">
-        <div class="qnav-icon"><i class="fas fa-tasks"></i></div>
-        <div class="qnav-text">
-          <h3>Tareas</h3>
-          <p id="qnavTareas">Sin tareas pendientes</p>
-        </div>
-        <i class="fas fa-arrow-right qnav-arrow"></i>
-      </button>
-      <button class="qnav-btn" data-goto="apuntes" style="--c:#16a085">
-        <div class="qnav-icon"><i class="fas fa-sticky-note"></i></div>
-        <div class="qnav-text">
-          <h3>Apuntes</h3>
-          <p id="qnavApuntes">Sin apuntes guardados</p>
-        </div>
-        <i class="fas fa-arrow-right qnav-arrow"></i>
-      </button>
-      <button class="qnav-btn" data-goto="examenes" style="--c:#8e44ad">
-        <div class="qnav-icon"><i class="fas fa-file-alt"></i></div>
-        <div class="qnav-text">
-          <h3>Exámenes</h3>
-          <p id="qnavExamenes">Sin exámenes registrados</p>
-        </div>
-        <i class="fas fa-arrow-right qnav-arrow"></i>
-      </button>
-      <button class="qnav-btn" data-goto="proyectos" style="--c:#e67e22">
-        <div class="qnav-icon"><i class="fas fa-project-diagram"></i></div>
-        <div class="qnav-text">
-          <h3>Proyectos</h3>
-          <p id="qnavProyectos">Sin proyectos activos</p>
-        </div>
-        <i class="fas fa-arrow-right qnav-arrow"></i>
-      </button>
-      <button class="qnav-btn" data-goto="calendario" style="--c:#2980b9">
-        <div class="qnav-icon"><i class="fas fa-calendar-alt"></i></div>
-        <div class="qnav-text">
-          <h3>Calendario</h3>
-          <p id="qnavCalendario">Sin eventos próximos</p>
-        </div>
-        <i class="fas fa-arrow-right qnav-arrow"></i>
-      </button>
+      <div class="led-wrap" style="--led-color1:#00e5ff;--led-color2:#3b82f6;--led-speed:6s">
+        <button class="qnav-btn" data-goto="materias">
+          <div class="qnav-icon" style="background:rgba(0,229,255,0.12);color:#00e5ff"><i class="fas fa-book"></i></div>
+          <div class="qnav-text"><h3>Materias</h3><p id="qnavMaterias">Sin materias registradas</p></div>
+          <i class="fas fa-arrow-right qnav-arrow"></i>
+        </button>
+      </div>
+      <div class="led-wrap" style="--led-color1:#fb923c;--led-color2:#ef4444;--led-speed:7s">
+        <button class="qnav-btn" data-goto="tareas">
+          <div class="qnav-icon" style="background:rgba(251,146,60,0.12);color:#fb923c"><i class="fas fa-tasks"></i></div>
+          <div class="qnav-text"><h3>Tareas</h3><p id="qnavTareas">Sin tareas pendientes</p></div>
+          <i class="fas fa-arrow-right qnav-arrow"></i>
+        </button>
+      </div>
+      <div class="led-wrap" style="--led-color1:#34d399;--led-color2:#818cf8;--led-speed:8s">
+        <button class="qnav-btn" data-goto="apuntes">
+          <div class="qnav-icon" style="background:rgba(52,211,153,0.12);color:#34d399"><i class="fas fa-sticky-note"></i></div>
+          <div class="qnav-text"><h3>Apuntes</h3><p id="qnavApuntes">Sin apuntes guardados</p></div>
+          <i class="fas fa-arrow-right qnav-arrow"></i>
+        </button>
+      </div>
+      <div class="led-wrap" style="--led-color1:#c084fc;--led-color2:#9333ea;--led-speed:9s">
+        <button class="qnav-btn" data-goto="examenes">
+          <div class="qnav-icon" style="background:rgba(192,132,252,0.12);color:#c084fc"><i class="fas fa-file-alt"></i></div>
+          <div class="qnav-text"><h3>Exámenes</h3><p id="qnavExamenes">Sin exámenes registrados</p></div>
+          <i class="fas fa-arrow-right qnav-arrow"></i>
+        </button>
+      </div>
+      <div class="led-wrap" style="--led-color1:#fbbf24;--led-color2:#fb923c;--led-speed:10s">
+        <button class="qnav-btn" data-goto="proyectos">
+          <div class="qnav-icon" style="background:rgba(251,191,36,0.12);color:#fbbf24"><i class="fas fa-project-diagram"></i></div>
+          <div class="qnav-text"><h3>Proyectos</h3><p id="qnavProyectos">Sin proyectos activos</p></div>
+          <i class="fas fa-arrow-right qnav-arrow"></i>
+        </button>
+      </div>
+      <div class="led-wrap" style="--led-color1:#60a5fa;--led-color2:#00e5ff;--led-speed:11s">
+        <button class="qnav-btn" data-goto="calendario">
+          <div class="qnav-icon" style="background:rgba(96,165,250,0.12);color:#60a5fa"><i class="fas fa-calendar-alt"></i></div>
+          <div class="qnav-text"><h3>Calendario</h3><p id="qnavCalendario">Sin eventos próximos</p></div>
+          <i class="fas fa-arrow-right qnav-arrow"></i>
+        </button>
+      </div>
     </div>
 
     <!-- Actividades de la semana (resumen en inicio) -->
