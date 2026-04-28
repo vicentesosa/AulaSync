@@ -2169,3 +2169,36 @@ body {
   opacity: .7;
 }
 .touch-hint i { font-size: .8rem; }
+
+/* ===== LONG PRESS MÓVIL — prevenir comportamiento nativo de iOS ===== */
+/*
+  Sin esto, iOS muestra su propio menú al mantener presionado
+  (copiar, compartir, seleccionar texto) antes de que se dispare
+  nuestro evento touchstart+setTimeout. Esto lo bloquea.
+*/
+.mat-card,
+.examen-card,
+.proyecto-card,
+.apunte-item,
+.ev,
+.task-item,
+.qnav-btn,
+.stat-card {
+  -webkit-touch-callout: none;   /* iOS: sin popup nativo al mantener */
+  -webkit-user-select:   none;   /* iOS: sin selección de texto */
+  user-select:           none;
+}
+
+/* Context menus: asegurarse que quedan encima de todo en móvil */
+@media (hover: none) and (pointer: coarse) {
+  .ctx-menu,
+  #ctxMenuExamen,
+  #ctxMenuProyecto,
+  #ctxMenuApunte,
+  #ctxCalEvento {
+    z-index: 9000 !important;
+    /* En táctil los ítems son un poco más grandes para facilitar el toque */
+    min-width: 210px;
+  }
+  .ctx-item { padding: .8rem 1.1rem !important; font-size: .95rem !important; }
+}

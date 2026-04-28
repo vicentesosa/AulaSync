@@ -1,20 +1,26 @@
 // ===== LONG PRESS (touch) =====
 // Permite abrir menús de contexto con toque prolongado en táctil
-function addLongPress(el, callback, ms = 600) {
+function addLongPress(el, callback, ms = 500) {
   let timer = null;
-  let moved = false;
+  let startX = 0, startY = 0;
   el.addEventListener('touchstart', e => {
-    moved = false;
     const t = e.touches[0];
+    startX = t.clientX; startY = t.clientY;
     timer = setTimeout(() => {
-      if (!moved) {
-        // Vibrar levemente si el dispositivo lo soporta
-        if (navigator.vibrate) navigator.vibrate(40);
-        callback(t.clientX, t.clientY);
-      }
+      if (navigator.vibrate) navigator.vibrate(35);
+      // Feedback visual: pequeño pulso en el elemento
+      el.classList.add('lp-active');
+      setTimeout(() => el.classList.remove('lp-active'), 350);
+      callback(t.clientX, t.clientY);
     }, ms);
   }, { passive: true });
-  el.addEventListener('touchmove',   () => { moved = true; clearTimeout(timer); }, { passive: true });
+  // Cancelar solo si el dedo se mueve más de 10px (ignora pequeños temblores)
+  el.addEventListener('touchmove', e => {
+    const t = e.touches[0];
+    if (Math.abs(t.clientX - startX) > 10 || Math.abs(t.clientY - startY) > 10) {
+      clearTimeout(timer);
+    }
+  }, { passive: true });
   el.addEventListener('touchend',    () => clearTimeout(timer), { passive: true });
   el.addEventListener('touchcancel', () => clearTimeout(timer), { passive: true });
 }

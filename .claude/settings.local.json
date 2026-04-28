@@ -6,7 +6,9 @@
       "Bash(unzip -l \"AulaSync rediseño.zip\")",
       "Bash(unzip -o \"AulaSync rediseño.zip\" \"AulaSync Home.html\" -d /tmp/aulasync_redesign)",
       "Bash(unzip -o \"AulaSync rediseño.zip\" -d /tmp/aulasync_redesign/)",
-      "Bash(grep -n \"//\" /c/Users/USUARIO/paginas/AulaSync/auth.js)"
+      "Bash(grep -n \"//\" /c/Users/USUARIO/paginas/AulaSync/auth.js)",
+      "Bash(grep -n \"-webkit-touch-callout\\\\|z-index: 9000\\\\|lp-pulse\" \"C:/Users/USUARIO/paginas/AulaSync/style.css\")",
+      "Bash(grep -n \"-webkit-touch-callout\\\\|webkit-user-select\" \"C:/Users/USUARIO/paginas/AulaSync/style.css\")"
     ]
   }
 }
